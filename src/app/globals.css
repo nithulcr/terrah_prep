@@ -1,26 +1,353 @@
 @import "tailwindcss";
 
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #121826;
+
+  --yellow:   #CCE408;
+  --green: #3B82F6;
+  --text: #F2F2F7;
+   --text2: #022f54;
+}
+body {
+  color: var(--foreground);
+  background: var(--background);
+    font-family: var(--font-manrope);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Focus styles */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Question palette styles */
+.question-palette-item {
+  @apply w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-medium cursor-pointer transition-all;
+}
+
+.question-palette-item.answered {
+  @apply bg-green-100 border-green-500 text-green-700;
+}
+
+.question-palette-item.unanswered {
+  @apply bg-red-100 border-red-500 text-red-700;
+}
+
+.question-palette-item.not-visited {
+  @apply bg-white border-gray-300 text-gray-700 hover:border-blue-400;
+}
+
+.question-palette-item.current {
+  @apply border-blue-500 ring-2 ring-blue-200;
+}
+
+/* Test timer warning */
+.timer-warning {
+  @apply text-red-600 font-bold animate-pulse;
+}
+
+.timer-normal {
+  @apply text-gray-700;
+}
+
+
+.load-anim {
+  font-size: 18px;
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.load-anim span {
+  opacity: 0;
+  animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+
+  0%,
+  20% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.load-anim span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.load-anim span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.load-anim span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.second-slide,
+.third-slide {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+.button {
+  border: 1px none var(--light-outline);
+  text-transform: uppercase;
+  justify-content: center;
+  align-items: center;
+  padding: 13px 26px;
+  text-decoration: none;
+  display: flex;
+  position: relative;
+  cursor: pointer;
+  background: #fffac2;
+  border-radius: 10px;
+  min-width: 150px;
+}
+
+
+
+.button-outline {
+  background-color: var(--green);
+  width: 100%;
+  padding: 13px 26px;
+  position: absolute;
+  inset: 0%;
+  transition: .3s;
+  border: 1px solid transparent;
+  background: linear-gradient(90deg, var(--green),  var(--yellow)) border-box;
+  border-radius: 10px;
+}
+.btn-2 .button-outline {
+  background: white;
+}
+.button-text {
+  z-index: 25;
+  position: relative;
+  text-align: center;
+  color: var(--text2);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: .9px;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg,
+      var(--green) 0%,
+      var(--yellow) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  line-height: .9;
+  width: fit-content;
+}
+
+
+
+/* Scroll Indicator */
+.scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.scroll-indicator span {
+  font-size: 12px;
+  letter-spacing: 4px;
+  opacity: 0.7;
+}
+
+.scroll-arrow {
+  font-size: 24px;
+  animation: bounceArrow 1.5s infinite;
+}
+
+@keyframes bounceArrow {
+
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translateY(10px);
+    opacity: 1;
+  }
+}
+
+.header{
+  transition: .3s;
+}
+.header:before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 0%;
+  background: #00000054;
+  backdrop-filter: blur(40px);
+  transition: .3s;
+
+
+}
+
+.scrolled .header:before{
+  height: 100%;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.scroll-container {
+  overflow: hidden;
+  width: 100%;
+  padding: 40px 0;
+}
+
+.scroll-container .top-scroll,
+.scroll-container .bottom-scroll {
+  display: flex;
+  gap: 20px;
+  will-change: transform;
+  width: fit-content;
+  flex-wrap: nowrap;
+}
+
+.scroll-container img,
+.scroll-container video {
+  object-fit: contain;
+  width: auto;
+  flex-shrink: 0;
+  object-position: bottom;
+  width: 250px;
+  height: 350px;
+  object-fit: cover;
 }

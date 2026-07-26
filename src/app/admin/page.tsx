@@ -1,0 +1,5 @@
+﻿'use client';
+import { useEffect, useState } from 'react';
+import { Card, CardBody } from '@/components/ui';
+import { supabase } from '@/lib/supabase/client';
+export default function AdminDashboardPage() { const [stats, setStats] = useState({ users: 0, batches: 0, categories: 0, questions: 0 }); useEffect(() => { void Promise.all([supabase.from('profiles').select('*', { count: 'exact', head: true }), supabase.from('batches').select('*', { count: 'exact', head: true }), supabase.from('categories').select('*', { count: 'exact', head: true }), supabase.from('questions').select('*', { count: 'exact', head: true })]).then(([users, batches, categories, questions]) => setStats({ users: users.count ?? 0, batches: batches.count ?? 0, categories: categories.count ?? 0, questions: questions.count ?? 0 })); }, []); return <div><h1 className="text-3xl font-bold">Admin Dashboard</h1><div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(stats).map(([name, value]) => <Card key={name}><CardBody className="p-6"><p className="capitalize text-gray-600">{name}</p><p className="text-3xl font-bold">{value}</p></CardBody></Card>)}</div></div>; }
