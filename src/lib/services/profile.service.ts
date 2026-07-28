@@ -2,8 +2,8 @@
 // TERRAH PREP - PROFILE SERVICE
 // ============================================
 
-import { supabase } from '@/lib/supabase/client';
 import { Profile } from '@/types';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================
 // TYPES
@@ -30,13 +30,19 @@ export const profileService = {
   /**
    * Get user profile by ID
    */
-  async getProfile(userId: string): Promise<{ profile: Profile | null; error: string | null }> {
+  async getProfile(supabase: SupabaseClient, userId: string): Promise<{ profile: Profile | null; error: string | null }> {
     try {
+      console.log('=== getProfile ===');
+      console.log('userId:', userId);
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      console.log('Query Result - Profile:', data ? 'FOUND' : 'NOT FOUND');
+      console.log('Query Error - Profile:', error);
 
       if (error) {
         return { profile: null, error: error.message };
@@ -49,6 +55,7 @@ export const profileService = {
 
       return { profile: data as Profile, error: null };
     } catch (error) {
+      console.error('Error fetching profile:', error);
       return { profile: null, error: 'Failed to fetch profile' };
     }
   },
@@ -57,8 +64,11 @@ export const profileService = {
    * Create a new profile
    * This should be called automatically after signup (via trigger or server action)
    */
-  async createProfile(data: ProfileCreateData): Promise<{ profile: Profile | null; error: string | null }> {
+  async createProfile(supabase: SupabaseClient, data: ProfileCreateData): Promise<{ profile: Profile | null; error: string | null }> {
     try {
+      console.log('=== createProfile ===');
+      console.log('data:', data);
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .insert({
@@ -70,12 +80,16 @@ export const profileService = {
         .select()
         .single();
 
+      console.log('Query Result - Profile:', profile ? 'CREATED' : 'FAILED');
+      console.log('Query Error - Profile:', error);
+
       if (error) {
         return { profile: null, error: error.message };
       }
 
       return { profile: profile as Profile, error: null };
     } catch (error) {
+      console.error('Error creating profile:', error);
       return { profile: null, error: 'Failed to create profile' };
     }
   },
@@ -83,8 +97,12 @@ export const profileService = {
   /**
    * Update user profile
    */
-  async updateProfile(userId: string, data: ProfileUpdateData): Promise<{ profile: Profile | null; error: string | null }> {
+  async updateProfile(supabase: SupabaseClient, userId: string, data: ProfileUpdateData): Promise<{ profile: Profile | null; error: string | null }> {
     try {
+      console.log('=== updateProfile ===');
+      console.log('userId:', userId);
+      console.log('data:', data);
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .update(data)
@@ -92,12 +110,16 @@ export const profileService = {
         .select()
         .single();
 
+      console.log('Query Result - Profile:', profile ? 'UPDATED' : 'FAILED');
+      console.log('Query Error - Profile:', error);
+
       if (error) {
         return { profile: null, error: error.message };
       }
 
       return { profile: profile as Profile, error: null };
     } catch (error) {
+      console.error('Error updating profile:', error);
       return { profile: null, error: 'Failed to update profile' };
     }
   },
@@ -105,12 +127,17 @@ export const profileService = {
   /**
    * Delete user profile (for admin use)
    */
-  async deleteProfile(userId: string): Promise<{ success: boolean; error: string | null }> {
+  async deleteProfile(supabase: SupabaseClient, userId: string): Promise<{ success: boolean; error: string | null }> {
     try {
+      console.log('=== deleteProfile ===');
+      console.log('userId:', userId);
+
       const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
+
+      console.log('Query Error - Delete Profile:', error);
 
       if (error) {
         return { success: false, error: error.message };
@@ -118,6 +145,7 @@ export const profileService = {
 
       return { success: true, error: null };
     } catch (error) {
+      console.error('Error deleting profile:', error);
       return { success: false, error: 'Failed to delete profile' };
     }
   },
@@ -125,9 +153,9 @@ export const profileService = {
   /**
    * Check if user is admin
    */
-  async isAdmin(userId: string): Promise<boolean> {
+  async isAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
     try {
-      const { profile, error } = await this.getProfile(userId);
+      const { profile, error } = await this.getProfile(supabase, userId);
       
       if (error || !profile) {
         return false;
@@ -135,6 +163,7 @@ export const profileService = {
 
       return profile.role === 'admin';
     } catch (error) {
+      console.error('Error checking admin status:', error);
       return false;
     }
   },

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user has PDF export permission
-    const { plan } = await usageService.getUserUsageWithPlan(user.id);
+    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
     
     if (!plan || !plan.allow_pdf_download) {
       return NextResponse.json(

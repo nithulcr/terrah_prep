@@ -2,9 +2,9 @@
 // TERRAH PREP - TEST SETS SERVICE
 // ============================================
 
-import { supabase } from '@/lib/supabase/client';
 import { settingsService } from '@/lib/services/settings.service';
 import { TestSet, TestSetQuestion, UserTestAttempt, TestSetStats, Question, Category } from '@/types';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================
 // TEST SETS SERVICE
@@ -14,14 +14,20 @@ export const testSetsService = {
   /**
    * Get all test sets for a batch
    */
-  async getTestSetsByBatch(batchId: number): Promise<TestSet[]> {
+  async getTestSetsByBatch(supabase: SupabaseClient, batchId: number): Promise<TestSet[]> {
     try {
+      console.log('=== getTestSetsByBatch ===');
+      console.log('batchId:', batchId);
+
       const { data, error } = await supabase
         .from('test_sets')
         .select('*, batch:batches(*)')
         .eq('batch_id', batchId)
         .eq('is_active', true)
         .order('set_number', { ascending: true });
+
+      console.log('Query Result - Test Sets:', data?.length);
+      console.log('Query Error - Test Sets:', error);
 
       if (error) {
         console.error('Error fetching test sets:', error);
@@ -38,13 +44,19 @@ export const testSetsService = {
   /**
    * Get a single test set with questions
    */
-  async getTestSet(testSetId: number): Promise<TestSet | null> {
+  async getTestSet(supabase: SupabaseClient, testSetId: number): Promise<TestSet | null> {
     try {
+      console.log('=== getTestSet ===');
+      console.log('testSetId:', testSetId);
+
       const { data, error } = await supabase
         .from('test_sets')
         .select('*, batch:batches(*), test_set_questions(*, question:questions(*, category:categories(*)))')
         .eq('id', testSetId)
         .single();
+
+      console.log('Query Result - Test Set:', data ? 'FOUND' : 'NOT FOUND');
+      console.log('Query Error - Test Set:', error);
 
       if (error || !data) {
         return null;
@@ -64,10 +76,14 @@ export const testSetsService = {
   /**
    * Get test set statistics for a batch
    */
-  async getTestSetStats(batchId: number, userId: string): Promise<TestSetStats> {
+  async getTestSetStats(supabase: SupabaseClient, batchId: number, userId: string): Promise<TestSetStats> {
     try {
+      console.log('=== getTestSetStats ===');
+      console.log('batchId:', batchId);
+      console.log('userId:', userId);
+
       // Get settings
-      const settings = await settingsService.getAllSettings();
+      const settings = await settingsService.getAllSettings(supabase);
       
       // Get total active questions for this batch
       const { count: totalQuestions } = await supabase
@@ -75,6 +91,8 @@ export const testSetsService = {
         .select('*', { count: 'exact', head: true })
         .eq('batch_id', batchId)
         .eq('is_active', true);
+
+      console.log('Query Result - Total Questions:', totalQuestions);
 
       const totalQuestionsCount = totalQuestions || 0;
       const questionsPerTest = settings.total_questions || 100;
@@ -87,11 +105,15 @@ export const testSetsService = {
         .eq('user_id', userId)
         .not('completed_at', 'is', null);
 
+      console.log('Query Result - Completed Attempts:', completedAttempts?.length);
+
       // Get test sets for this batch to count only those belonging to this batch
       const { data: batchTestSets } = await supabase
         .from('test_sets')
         .select('id')
         .eq('batch_id', batchId);
+
+      console.log('Query Result - Batch Test Sets:', batchTestSets?.length);
 
       const batchTestSetIds = new Set((batchTestSets || []).map((ts: any) => ts.id));
       
@@ -105,6 +127,8 @@ export const testSetsService = {
         .select('subscription:subscriptions(plan:plans(*))')
         .eq('user_id', userId)
         .maybeSingle();
+
+      console.log('Query Result - Usage Data:', usageData);
 
       const subscription = (usageData as any)?.subscription;
       const plan = subscription?.plan;
@@ -134,14 +158,21 @@ export const testSetsService = {
   /**
    * Get user's test attempt for a specific test set
    */
-  async getUserTestAttempt(userId: string, testSetId: number): Promise<UserTestAttempt | null> {
+  async getUserTestAttempt(supabase: SupabaseClient, userId: string, testSetId: number): Promise<UserTestAttempt | null> {
     try {
+      console.log('=== getUserTestAttempt ===');
+      console.log('userId:', userId);
+      console.log('testSetId:', testSetId);
+
       const { data, error } = await supabase
         .from('user_test_attempts')
         .select('*')
         .eq('user_id', userId)
         .eq('test_set_id', testSetId)
         .maybeSingle();
+
+      console.log('Query Result - User Test Attempt:', data ? 'FOUND' : 'NOT FOUND');
+      console.log('Query Error:', error);
 
       if (error || !data) {
         return null;
@@ -157,12 +188,17 @@ export const testSetsService = {
   /**
    * Start a test set (create attempt record)
    */
-  async startTestSet(userId: string, testSetId: number): Promise<{ success: boolean; error?: string }> {
+  async startTestSet(supabase: SupabaseClient, userId: string, testSetId: number): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('=== startTestSet ===');
+      console.log('userId:', userId);
+      console.log('testSetId:', testSetId);
+
       // Check if user already has an attempt
-      const existingAttempt = await this.getUserTestAttempt(userId, testSetId);
+      const existingAttempt = await this.getUserTestAttempt(supabase, userId, testSetId);
       
       if (existingAttempt) {
+        console.log('User already has an attempt, returning success');
         return { success: true }; // Already started
       }
 
@@ -175,12 +211,15 @@ export const testSetsService = {
           started_at: new Date().toISOString(),
         });
 
+      console.log('Query Error - Start Test Set:', error);
+
       if (error) {
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error) {
+      console.error('Error starting test set:', error);
       return { success: false, error: 'Failed to start test' };
     }
   },
@@ -188,8 +227,13 @@ export const testSetsService = {
   /**
    * Complete a test set
    */
-  async completeTestSet(userId: string, testSetId: number, testResultId: number): Promise<{ success: boolean; error?: string }> {
+  async completeTestSet(supabase: SupabaseClient, userId: string, testSetId: number, testResultId: number): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('=== completeTestSet ===');
+      console.log('userId:', userId);
+      console.log('testSetId:', testSetId);
+      console.log('testResultId:', testResultId);
+
       const { error } = await supabase
         .from('user_test_attempts')
         .update({
@@ -200,12 +244,15 @@ export const testSetsService = {
         .eq('test_set_id', testSetId)
         .is('completed_at', null);
 
+      console.log('Query Error - Complete Test Set:', error);
+
       if (error) {
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error) {
+      console.error('Error completing test set:', error);
       return { success: false, error: 'Failed to complete test' };
     }
   },
@@ -213,8 +260,13 @@ export const testSetsService = {
   /**
    * Check if user can access a test set
    */
-  async canAccessTestSet(userId: string, testSetId: number, userPlan: string): Promise<{ canAccess: boolean; reason?: string }> {
+  async canAccessTestSet(supabase: SupabaseClient, userId: string, testSetId: number, userPlan: string): Promise<{ canAccess: boolean; reason?: string }> {
     try {
+      console.log('=== canAccessTestSet ===');
+      console.log('userId:', userId);
+      console.log('testSetId:', testSetId);
+      console.log('userPlan:', userPlan);
+
       // Free plan users can only take 1 test
       if (userPlan === 'free') {
         const { data: completedAttempts } = await supabase
@@ -223,9 +275,12 @@ export const testSetsService = {
           .eq('user_id', userId)
           .not('completed_at', 'is', null);
 
+        console.log('Query Result - Completed Attempts:', completedAttempts?.length);
+
         const completedCount = completedAttempts?.length || 0;
         
         if (completedCount >= 1) {
+          console.log('Access denied: Free plan user has completed 1 test');
           return {
             canAccess: false,
             reason: 'You have completed your free mock test. Upgrade your plan to unlock the remaining tests.',
@@ -234,17 +289,20 @@ export const testSetsService = {
       }
 
       // Check if user has already completed this specific test
-      const existingAttempt = await this.getUserTestAttempt(userId, testSetId);
+      const existingAttempt = await this.getUserTestAttempt(supabase, userId, testSetId);
       
       if (existingAttempt?.completed_at) {
+        console.log('Access denied: Test already completed');
         return {
           canAccess: false,
           reason: 'You have already completed this test.',
         };
       }
 
+      console.log('Access granted');
       return { canAccess: true };
     } catch (error) {
+      console.error('Error checking access:', error);
       return { canAccess: false, reason: 'Error checking access' };
     }
   },
@@ -253,10 +311,13 @@ export const testSetsService = {
    * Generate test sets for a batch (admin function)
    * This creates non-overlapping test sets from available questions
    */
-  async generateTestSets(batchId: number): Promise<{ success: boolean; created: number; error?: string }> {
+  async generateTestSets(supabase: SupabaseClient, batchId: number): Promise<{ success: boolean; created: number; error?: string }> {
     try {
+      console.log('=== generateTestSets ===');
+      console.log('batchId:', batchId);
+
       // Get settings
-      const settings = await settingsService.getAllSettings();
+      const settings = await settingsService.getAllSettings(supabase);
       const questionsPerTest = settings.total_questions;
       const questionsPerCategory = settings.questions_per_category || 0;
 
@@ -267,6 +328,9 @@ export const testSetsService = {
         .eq('batch_id', batchId)
         .eq('is_active', true)
         .order('created_at', { ascending: true });
+
+      console.log('Query Result - Questions:', questions?.length);
+      console.log('Query Error - Questions:', questionsError);
 
       if (questionsError || !questions || questions.length === 0) {
         return { success: false, created: 0, error: 'No questions found for this batch' };
@@ -295,19 +359,26 @@ export const testSetsService = {
         totalTests = Math.floor(questions.length / questionsPerTest);
       }
 
+      console.log('Total tests that can be generated:', totalTests);
+
       if (totalTests === 0) {
         return { success: false, created: 0, error: 'Not enough questions to create test sets' };
       }
 
       // Delete existing test sets for this batch
-      await supabase
+      console.log('Deleting existing test sets for batch:', batchId);
+      const { error: deleteError } = await supabase
         .from('test_sets')
         .delete()
         .eq('batch_id', batchId);
 
+      console.log('Query Error - Delete Test Sets:', deleteError);
+
       // Create test sets
       const testSets = [];
       for (let i = 1; i <= totalTests; i++) {
+        console.log(`Creating test set ${i} of ${totalTests}...`);
+        
         const { data: testSet, error: testSetError } = await supabase
           .from('test_sets')
           .insert({
@@ -319,6 +390,9 @@ export const testSetsService = {
           })
           .select()
           .single();
+
+        console.log('Query Result - Test Set:', testSet ? 'CREATED' : 'FAILED');
+        console.log('Query Error - Create Test Set:', testSetError);
 
         if (testSetError || !testSet) {
           console.error('Error creating test set:', testSetError);
@@ -355,15 +429,20 @@ export const testSetsService = {
           question_order: index + 1,
         }));
 
+        console.log(`Inserting ${testSetQuestions.length} questions for test set ${i}...`);
+        
         const { error: tsqError } = await supabase
           .from('test_set_questions')
           .insert(testSetQuestions);
+
+        console.log('Query Error - Insert Test Set Questions:', tsqError);
 
         if (tsqError) {
           console.error('Error creating test set questions:', tsqError);
         }
       }
 
+      console.log(`Successfully created ${testSets.length} test sets`);
       return { success: true, created: testSets.length };
     } catch (error) {
       console.error('Error generating test sets:', error);

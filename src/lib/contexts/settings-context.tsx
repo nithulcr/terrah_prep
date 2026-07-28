@@ -82,7 +82,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const updateSetting = async (key: string, value: any): Promise<{ success: boolean; error?: string }> => {
     try {
       setError(null);
-      const result = await settingsService.updateSetting(key, value);
+      const result = await settingsService.updateSettingClient(key, value);
       
       if (result.success) {
         // Refresh settings after update

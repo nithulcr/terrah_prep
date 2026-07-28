@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
-import { TestSet, TestSetStats } from '@/types';
-import { Trophy, Lock, Play, CheckCircle } from 'lucide-react';
+import { DynamicTest, TestSetStats } from '@/types';
+import { Trophy, Lock, Play, CheckCircle, Crown } from 'lucide-react';
 
 export default function MockTestsPage() {
   const { user } = useAuth();
   const [batches, setBatches] = useState<any[]>([]);
-  const [testSetsMap, setTestSetsMap] = useState<Record<number, TestSet[]>>({});
+  const [testsMap, setTestsMap] = useState<Record<number, DynamicTest[]>>({});
   const [statsMap, setStatsMap] = useState<Record<number, TestSetStats>>({});
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<number | null>(null);
@@ -33,8 +33,8 @@ export default function MockTestsPage() {
 
       if (batchesData) {
         setBatches(batchesData);
-        // Load test sets and stats for each batch
-        await loadTestSetsForBatches(batchesData);
+        // Load tests and stats for each batch
+        await loadTestsForBatches(batchesData);
       }
     } catch (error) {
       console.error('Error loading batches:', error);
@@ -43,34 +43,34 @@ export default function MockTestsPage() {
     }
   };
 
-  const loadTestSetsForBatches = async (batchesData: any[]) => {
-    const testSetsMapTemp: Record<number, TestSet[]> = {};
+  const loadTestsForBatches = async (batchesData: any[]) => {
+    const testsMapTemp: Record<number, DynamicTest[]> = {};
     const statsMapTemp: Record<number, TestSetStats> = {};
 
     for (const batch of batchesData) {
       try {
-        const [testSets, stats] = await Promise.all([
-          fetchTestSets(batch.id),
+        const [tests, stats] = await Promise.all([
+          fetchTests(batch.id),
           fetchStats(batch.id),
         ]);
 
-        testSetsMapTemp[batch.id] = testSets;
+        testsMapTemp[batch.id] = tests;
         statsMapTemp[batch.id] = stats;
       } catch (error) {
-        console.error(`Error loading test sets for batch ${batch.id}:`, error);
+        console.error(`Error loading tests for batch ${batch.id}:`, error);
       }
     }
 
-    setTestSetsMap(testSetsMapTemp);
+    setTestsMap(testsMapTemp);
     setStatsMap(statsMapTemp);
   };
 
-  const fetchTestSets = async (batchId: number): Promise<TestSet[]> => {
+  const fetchTests = async (batchId: number): Promise<DynamicTest[]> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return [];
 
-      const response = await fetch(`/api/test-sets?batchId=${batchId}`, {
+      const response = await fetch(`/api/mock-tests?batchId=${batchId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -79,9 +79,9 @@ export default function MockTestsPage() {
       if (!response.ok) return [];
 
       const data = await response.json();
-      return data.testSets || [];
+      return data.tests || [];
     } catch (error) {
-      console.error('Error fetching test sets:', error);
+      console.error('Error fetching tests:', error);
       return [];
     }
   };
@@ -100,7 +100,7 @@ export default function MockTestsPage() {
         };
       }
 
-      const response = await fetch(`/api/test-sets/stats?batchId=${batchId}`, {
+      const response = await fetch(`/api/mock-tests?batchId=${batchId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -141,7 +141,7 @@ export default function MockTestsPage() {
       case 'locked':
         return <Badge variant="danger">Locked</Badge>;
       default:
-        return <Badge variant="primary">Start</Badge>;
+        return <Badge variant="default">Start</Badge>;
     }
   };
 
@@ -176,7 +176,7 @@ export default function MockTestsPage() {
             Mock Tests
           </h1>
           <p className="mt-3 text-lg text-slate-600">
-            Practice with structured test sets
+            Practice with dynamically generated tests
           </p>
         </div>
       </section>
@@ -197,7 +197,7 @@ export default function MockTestsPage() {
         ) : (
           <div className="grid gap-6">
             {batches.map((batch) => {
-              const testSets = testSetsMap[batch.id] || [];
+              const tests = testsMap[batch.id] || [];
               const stats = statsMap[batch.id];
               const isSelected = selectedBatch === batch.id;
 
@@ -251,45 +251,55 @@ export default function MockTestsPage() {
                       </div>
                     )}
 
-                    {/* Test Sets */}
+                    {/* Tests */}
                     {isSelected && (
                       <div className="mt-6 space-y-3">
-                        {testSets.length === 0 ? (
+                        {tests.length === 0 ? (
                           <Card className="border border-slate-200">
                             <CardBody className="p-6 text-center">
-                              <p className="text-slate-600">No test sets available for this batch</p>
+                              <p className="text-slate-600">No tests available for this batch</p>
                             </CardBody>
                           </Card>
                         ) : (
-                          testSets.map((testSet) => (
-                            <Card key={testSet.id} className="border border-slate-200">
-                              <CardBody className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    {getStatusIcon(testSet.status)}
-                                    <div>
-                                      <h4 className="font-semibold text-slate-900">
-                                        {testSet.name}
-                                      </h4>
-                                      <p className="text-sm text-slate-600">
-                                        {testSet.total_questions} questions
-                                      </p>
+                          tests.map((test) => {
+                            const status = test.status;
+                            return (
+                              <Card key={test.testNumber} className="border border-slate-200">
+                                <CardBody className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      {getStatusIcon(status)}
+                                      <div>
+                                        <h4 className="font-semibold text-slate-900">
+                                          {test.name}
+                                        </h4>
+                                        <p className="text-sm text-slate-600">
+                                          {test.totalQuestions} questions
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {getStatusBadge(status)}
+                                      {status === 'locked' ? (
+                                        <Link href="/pricing">
+                                          <Button size="sm" variant="outline" className="border-yellow-500 text-yellow-700 hover:bg-yellow-50">
+                                            <Crown className="mr-1 h-4 w-4" />
+                                            Upgrade
+                                          </Button>
+                                        </Link>
+                                      ) : status !== 'completed' && (
+                                        <Link href={`/mock-tests/${test.testNumber}?batchId=${batch.id}`}>
+                                          <Button size="sm">
+                                            {status === 'started' ? 'Continue' : 'Start'}
+                                          </Button>
+                                        </Link>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    {getStatusBadge(testSet.status)}
-                                    {testSet.status !== 'locked' && testSet.status !== 'completed' && (
-                                      <Link href={`/mock-tests/${testSet.id}`}>
-                                        <Button size="sm">
-                                          {testSet.status === 'started' ? 'Continue' : 'Start'}
-                                        </Button>
-                                      </Link>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardBody>
-                            </Card>
-                          ))
+                                </CardBody>
+                              </Card>
+                            );
+                          })
                         )}
                       </div>
                     )}

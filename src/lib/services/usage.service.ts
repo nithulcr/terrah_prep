@@ -2,9 +2,9 @@
 // TERRAH PREP - USAGE SERVICE
 // ============================================
 
-import { supabase } from '@/lib/supabase/client';
 import { settingsService } from '@/lib/services/settings.service';
 import { UserUsage, UsageSummary, Plan } from '@/types';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================
 // TYPES
@@ -42,14 +42,20 @@ export const usageService = {
    * Get user usage summary with plan details
    * Uses direct queries instead of RPC to avoid database function dependency
    */
-  async getUserUsageSummary(userId: string): Promise<{ usage: UsageSummary | null; error: string | null }> {
+  async getUserUsageSummary(supabase: SupabaseClient, userId: string): Promise<{ usage: UsageSummary | null; error: string | null }> {
     try {
+      console.log('=== getUserUsageSummary ===');
+      console.log('userId:', userId);
+
       // Get user usage with subscription and plan
       const { data: usageData, error: usageError } = await supabase
         .from('user_usage')
         .select('*, subscription:subscriptions(plan:plans(*))')
         .eq('user_id', userId)
         .maybeSingle();
+
+      console.log('Query Result - Usage Data:', usageData);
+      console.log('Query Error - Usage:', usageError);
 
       if (usageError) {
         return { usage: null, error: usageError.message };
@@ -65,7 +71,7 @@ export const usageService = {
 
       // If no active subscription, return basic usage with settings from database
       if (!plan) {
-        const settings = await settingsService.getAllSettings();
+        const settings = await settingsService.getAllSettings(supabase);
         return {
           usage: {
             plan_slug: 'free',
@@ -94,6 +100,7 @@ export const usageService = {
 
       return { usage: usageSummary, error: null };
     } catch (error) {
+      console.error('Error fetching usage summary:', error);
       return { usage: null, error: 'Failed to fetch usage summary' };
     }
   },
@@ -102,8 +109,11 @@ export const usageService = {
    * Reset daily usage if it's a new day
    * Called on login to reset daily counters
    */
-  async resetDailyUsageIfNeeded(userId: string): Promise<void> {
+  async resetDailyUsageIfNeeded(supabase: SupabaseClient, userId: string): Promise<void> {
     try {
+      console.log('=== resetDailyUsageIfNeeded ===');
+      console.log('userId:', userId);
+      
       const today = new Date().toISOString().split('T')[0];
       
       const { data: usageData } = await supabase
@@ -112,6 +122,8 @@ export const usageService = {
         .eq('user_id', userId)
         .maybeSingle();
 
+      console.log('Query Result - Usage Data:', usageData);
+
       if (!usageData) {
         return;
       }
@@ -119,14 +131,17 @@ export const usageService = {
       const lastReset = (usageData as any).last_daily_reset;
       
       if (lastReset !== today) {
+        console.log('Resetting daily counters for user:', userId);
         // Reset daily counters
-        await supabase
+        const { error } = await supabase
           .from('user_usage')
           .update({
             questions_today: 0,
             last_daily_reset: today,
           })
           .eq('user_id', userId);
+
+        console.log('Query Error - Reset Daily Usage:', error);
       }
     } catch (error) {
       console.error('Failed to reset daily usage:', error);
@@ -137,13 +152,19 @@ export const usageService = {
   /**
    * Get user usage with full plan details
    */
-  async getUserUsageWithPlan(userId: string): Promise<{ usage: UserUsage | null; plan: Plan | null; error: string | null }> {
+  async getUserUsageWithPlan(supabase: SupabaseClient, userId: string): Promise<{ usage: UserUsage | null; plan: Plan | null; error: string | null }> {
     try {
+      console.log('=== getUserUsageWithPlan ===');
+      console.log('userId:', userId);
+
       const { data, error } = await supabase
         .from('user_usage')
         .select('*, subscription:subscriptions(plan:plans(*))')
         .eq('user_id', userId)
         .maybeSingle();
+
+      console.log('Query Result - Usage with Plan:', data);
+      console.log('Query Error - Usage:', error);
 
       if (error) {
         return { usage: null, plan: null, error: error.message };
@@ -159,6 +180,7 @@ export const usageService = {
 
       return { usage, plan, error: null };
     } catch (error) {
+      console.error('Error fetching usage:', error);
       return { usage: null, plan: null, error: 'Failed to fetch usage' };
     }
   },
@@ -166,9 +188,12 @@ export const usageService = {
   /**
    * Check if user can access questions based on their plan and usage
    */
-  async canAccessQuestions(userId: string): Promise<UsageCheckResult> {
+  async canAccessQuestions(supabase: SupabaseClient, userId: string): Promise<UsageCheckResult> {
     try {
-      const { usage, error } = await this.getUserUsageSummary(userId);
+      console.log('=== canAccessQuestions ===');
+      console.log('userId:', userId);
+
+      const { usage, error } = await this.getUserUsageSummary(supabase, userId);
 
       if (error || !usage) {
         return {
@@ -180,13 +205,16 @@ export const usageService = {
       }
 
       // Get plan details
-      const planQuery = await supabase
+      const { data: planData, error: planError } = await supabase
         .from('plans')
         .select('*')
         .eq('slug', usage.plan_slug)
         .single();
 
-      if (planQuery.error || !planQuery.data) {
+      console.log('Query Result - Plan:', planData);
+      console.log('Query Error - Plan:', planError);
+
+      if (planError || !planData) {
         return {
           canAccess: false,
           reason: 'Plan not found',
@@ -195,7 +223,7 @@ export const usageService = {
         };
       }
 
-      const selectedPlan = planQuery.data as Plan;
+      const selectedPlan = planData as Plan;
 
       // Check lifetime question limit (for FREE plan)
       // Use app_settings.free_question_limit for FREE plan, otherwise use plan's limit
@@ -203,7 +231,7 @@ export const usageService = {
       
       // For FREE plan, use the free_question_limit from app_settings
       if (selectedPlan.slug === 'free') {
-        const settings = await settingsService.getAllSettings();
+        const settings = await settingsService.getAllSettings(supabase);
         effectiveLifetimeLimit = settings.free_question_limit;
         console.log('Using FREE plan limit from settings:', effectiveLifetimeLimit);
       }
@@ -238,6 +266,7 @@ export const usageService = {
         plan: selectedPlan,
       };
     } catch (error) {
+      console.error('Error checking access:', error);
       return {
         canAccess: false,
         reason: 'Error checking access',
@@ -250,9 +279,12 @@ export const usageService = {
   /**
    * Check if user can start a mock test
    */
-  async canStartMockTest(userId: string): Promise<UsageCheckResult> {
+  async canStartMockTest(supabase: SupabaseClient, userId: string): Promise<UsageCheckResult> {
     try {
-      const { usage, error } = await this.getUserUsageSummary(userId);
+      console.log('=== canStartMockTest ===');
+      console.log('userId:', userId);
+
+      const { usage, error } = await this.getUserUsageSummary(supabase, userId);
 
       if (error || !usage) {
         return {
@@ -264,13 +296,16 @@ export const usageService = {
       }
 
       // Get plan details
-      const planQuery = await supabase
+      const { data: planData, error: planError } = await supabase
         .from('plans')
         .select('*')
         .eq('slug', usage.plan_slug)
         .single();
 
-      if (planQuery.error || !planQuery.data) {
+      console.log('Query Result - Plan:', planData);
+      console.log('Query Error - Plan:', planError);
+
+      if (planError || !planData) {
         return {
           canAccess: false,
           reason: 'Plan not found',
@@ -279,7 +314,7 @@ export const usageService = {
         };
       }
 
-      const selectedPlan = planQuery.data as Plan;
+      const selectedPlan = planData as Plan;
 
       // Check monthly mock test limit
       if (selectedPlan.monthly_mock_test_limit !== null && selectedPlan.monthly_mock_test_limit !== undefined) {
@@ -300,6 +335,7 @@ export const usageService = {
         plan: selectedPlan,
       };
     } catch (error) {
+      console.error('Error checking access:', error);
       return {
         canAccess: false,
         reason: 'Error checking access',
@@ -312,14 +348,21 @@ export const usageService = {
   /**
    * Increment usage counters after test completion
    */
-  async incrementUsage(userId: string, data: IncrementUsageData): Promise<{ success: boolean; error: string | null }> {
+  async incrementUsage(supabase: SupabaseClient, userId: string, data: IncrementUsageData): Promise<{ success: boolean; error: string | null }> {
     try {
+      console.log('=== incrementUsage ===');
+      console.log('userId:', userId);
+      console.log('data:', data);
+
       // First, get current usage
       const { data: currentUsage, error: fetchError } = await supabase
         .from('user_usage')
         .select('*')
         .eq('user_id', userId)
         .single();
+
+      console.log('Query Result - Current Usage:', currentUsage);
+      console.log('Query Error - Fetch Usage:', fetchError);
 
       if (fetchError || !currentUsage) {
         return { success: false, error: fetchError?.message ?? 'Failed to fetch current usage' };
@@ -341,12 +384,15 @@ export const usageService = {
         .update(updates)
         .eq('user_id', userId);
 
+      console.log('Query Error - Update Usage:', error);
+
       if (error) {
         return { success: false, error: error.message };
       }
 
       return { success: true, error: null };
     } catch (error) {
+      console.error('Error updating usage:', error);
       return { success: false, error: 'Failed to update usage' };
     }
   },
@@ -354,7 +400,7 @@ export const usageService = {
   /**
    * Get user usage by subscription ID (for admin)
    */
-  async getUsageBySubscription(subscriptionId: number): Promise<{ usage: UserUsage | null; error: string | null }> {
+  async getUsageBySubscription(supabase: SupabaseClient, subscriptionId: number): Promise<{ usage: UserUsage | null; error: string | null }> {
     try {
       const { data, error } = await supabase
         .from('user_usage')
@@ -362,8 +408,12 @@ export const usageService = {
         .eq('subscription_id', subscriptionId)
         .maybeSingle();
 
+      console.log('Query Result - Usage by Subscription:', data);
+      console.log('Query Error - Usage:', error);
+
       return { usage: data as UserUsage | null, error: error?.message ?? null };
     } catch (error) {
+      console.error('Error fetching usage:', error);
       return { usage: null, error: 'Failed to fetch usage' };
     }
   },
@@ -371,8 +421,11 @@ export const usageService = {
   /**
    * Reset user usage (for admin)
    */
-  async resetUserUsage(userId: string): Promise<{ success: boolean; error: string | null }> {
+  async resetUserUsage(supabase: SupabaseClient, userId: string): Promise<{ success: boolean; error: string | null }> {
     try {
+      console.log('=== resetUserUsage ===');
+      console.log('userId:', userId);
+
       const { error } = await supabase
         .from('user_usage')
         .update({
@@ -383,8 +436,11 @@ export const usageService = {
         })
         .eq('user_id', userId);
 
+      console.log('Query Error - Reset Usage:', error);
+
       return { success: !error, error: error?.message ?? null };
     } catch (error) {
+      console.error('Error resetting usage:', error);
       return { success: false, error: 'Failed to reset usage' };
     }
   },

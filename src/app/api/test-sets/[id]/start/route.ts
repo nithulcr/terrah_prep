@@ -5,10 +5,11 @@ import { testSetsService } from '@/lib/services/test-sets.service';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const testSetId = Number(params.id);
+    const resolvedParams = await params;
+    const testSetId = Number(resolvedParams.id);
 
     // Get token from Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -33,7 +34,7 @@ export async function POST(
     }
 
     // Get test set details
-    const testSet = await testSetsService.getTestSet(testSetId);
+    const testSet = await testSetsService.getTestSet(supabase, testSetId);
     if (!testSet) {
       return NextResponse.json({ error: 'Test set not found' }, { status: 404 });
     }
@@ -50,7 +51,7 @@ export async function POST(
     const userPlan = plan?.slug || 'free';
 
     // Check if user can access this test set
-    const { canAccess, reason } = await testSetsService.canAccessTestSet(user.id, testSetId, userPlan);
+    const { canAccess, reason } = await testSetsService.canAccessTestSet(supabase, user.id, testSetId, userPlan);
     
     if (!canAccess) {
       return NextResponse.json({ 
@@ -60,14 +61,14 @@ export async function POST(
     }
 
     // Start the test set
-    const { success, error } = await testSetsService.startTestSet(user.id, testSetId);
+    const { success, error } = await testSetsService.startTestSet(supabase, user.id, testSetId);
     
     if (!success) {
       return NextResponse.json({ error: error || 'Failed to start test' }, { status: 500 });
     }
 
     // Get questions for this test set
-    const testSetWithQuestions = await testSetsService.getTestSet(testSetId);
+    const testSetWithQuestions = await testSetsService.getTestSet(supabase, testSetId);
     
     if (!testSetWithQuestions || !testSetWithQuestions.questions || testSetWithQuestions.questions.length === 0) {
       return NextResponse.json({ error: 'No questions found for this test set' }, { status: 404 });

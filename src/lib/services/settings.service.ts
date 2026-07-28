@@ -2,7 +2,8 @@
 // TERRAH PREP - SETTINGS SERVICE
 // ============================================
 
-import { supabase } from '@/lib/supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase as browserSupabase } from '@/lib/supabase/client';
 
 // ============================================
 // TYPES
@@ -75,12 +76,17 @@ class SettingsServiceClass {
   /**
    * Fetch all settings from database
    */
-  async fetchSettings(): Promise<AppSettings> {
+  async fetchSettings(supabase: SupabaseClient): Promise<AppSettings> {
     try {
+      console.log('=== fetchSettings ===');
+      
       const { data, error } = await supabase
         .from('app_settings')
         .select('setting_key, setting_value, description')
         .order('setting_key');
+
+      console.log('Query Result - Settings:', data);
+      console.log('Query Error - Settings:', error);
 
       if (error) {
         console.error('Error fetching settings:', error);
@@ -105,6 +111,7 @@ class SettingsServiceClass {
       this.cache = settings;
       this.lastFetch = Date.now();
 
+      console.log('Settings loaded successfully:', settings);
       return settings;
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -115,37 +122,52 @@ class SettingsServiceClass {
   /**
    * Get all settings (from cache if available)
    */
-  async getAllSettings(): Promise<AppSettings> {
+  async getAllSettings(supabase?: SupabaseClient): Promise<AppSettings> {
     // Return cached settings if still valid
     if (this.cache && Date.now() - this.lastFetch < this.CACHE_DURATION) {
       return this.cache;
     }
 
     // Fetch fresh settings
-    return this.fetchSettings();
+    if (!supabase) {
+      console.warn('No supabase client provided, using default settings');
+      return this.getDefaultSettings();
+    }
+    
+    return this.fetchSettings(supabase);
   }
 
   /**
    * Get a single setting by key
    */
-  async getSetting(key: string): Promise<any> {
-    const settings = await this.getAllSettings();
+  async getSetting(key: string, supabase?: SupabaseClient): Promise<any> {
+    const settings = await this.getAllSettings(supabase);
     return settings[key];
   }
 
   /**
-   * Update a setting (admin only)
+   * Update a setting (admin only) - Server-side version
    */
-  async updateSetting(key: string, value: any): Promise<{ success: boolean; error?: string }> {
-    try {
-      const stringValue = String(value);
+  async updateSetting(supabaseClient: SupabaseClient, key: string, value: any): Promise<{ success: boolean; error?: string }> {
+    const client = supabaseClient;
+    const settingKey = key;
+    const settingValue = value;
 
-      const { error } = await supabase
+    try {
+      console.log('=== updateSetting ===');
+      console.log('key:', settingKey);
+      console.log('value:', settingValue);
+      
+      const stringValue = String(settingValue);
+
+      const { error } = await client
         .from('app_settings')
         .update({
           setting_value: stringValue
         })
-        .eq('setting_key', key);
+        .eq('setting_key', settingKey);
+
+      console.log('Query Error - Update Setting:', error);
 
       if (error) {
         console.error('Error updating setting:', error);
@@ -164,18 +186,26 @@ class SettingsServiceClass {
   }
 
   /**
+   * Update a setting (admin only) - Client-side version (backward compatibility)
+   */
+  async updateSettingClient(key: string, value: any): Promise<{ success: boolean; error?: string }> {
+    console.warn('updateSettingClient called - using browser client (client-side only)');
+    return this.updateSetting(browserSupabase, key, value);
+  }
+
+  /**
    * Refresh settings (force reload from database)
    */
-  async refreshSettings(): Promise<AppSettings> {
+  async refreshSettings(supabase: SupabaseClient): Promise<AppSettings> {
     this.cache = null;
     this.lastFetch = 0;
-    return this.fetchSettings();
+    return this.fetchSettings(supabase);
   }
 
   /**
    * Get default settings
    */
-private getDefaultSettings(): AppSettings {
+  private getDefaultSettings(): AppSettings {
     return {
       total_questions: 100,
       questions_per_category: 0,
@@ -210,4 +240,3 @@ private getDefaultSettings(): AppSettings {
 
 // Export singleton instance
 export const settingsService = new SettingsServiceClass();
-

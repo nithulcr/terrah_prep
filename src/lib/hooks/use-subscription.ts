@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/use-auth';
 import { usageService } from '@/lib/services/usage.service';
 import { paymentService } from '@/lib/services/payment.service';
 import { UsageCheckResult, PlanFeatureFlags } from '@/lib/services/usage.service';
+import { supabase } from '@/lib/supabase/client';
 
 // ============================================
 // TYPES
@@ -145,12 +146,12 @@ export function useSubscription(): UseSubscriptionReturn {
   
   // Check access functions
   const checkQuestionAccess = useCallback(async () => {
-    const result = await usageService.canAccessQuestions(user?.id || '');
+    const result = await usageService.canAccessQuestions(supabase, user?.id || '');
     return result;
   }, [user?.id]);
   
   const checkMockTestAccess = useCallback(async () => {
-    const result = await usageService.canStartMockTest(user?.id || '');
+    const result = await usageService.canStartMockTest(supabase, user?.id || '');
     return result;
   }, [user?.id]);
   
@@ -168,7 +169,7 @@ export function useSubscription(): UseSubscriptionReturn {
       return { success: false, error: 'No active subscription' };
     }
     
-    const result = await paymentService.cancelSubscription(subscription.user_id);
+    const result = await paymentService.cancelSubscription(supabase, subscription.user_id);
     
     if (result.success) {
       await refreshUsage();

@@ -1,29 +1,31 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
-import { Batch, CorrectOption, Question, questionOptions } from '@/types';
+import { Question, questionOptions } from '@/types';
 import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 
-export default function BatchTestPage() {
-  const { id } = useParams<{ id: string }>();
-  const batchId = Number(id);
+export default function MockTestPage() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [batch, setBatch] = useState<Batch | null>(null);
+  const testNumber = Number(searchParams.get('testNumber') || 1);
+  const batchId = Number(searchParams.get('batchId'));
+  
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, CorrectOption>>({});
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
+  const [testResultId, setTestResultId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!Number.isInteger(batchId) || batchId < 1) {
-      setError('Invalid batch ID');
+    if (!batchId || !testNumber) {
+      setError('Invalid test parameters');
       setLoading(false);
       return;
     }
@@ -39,14 +41,10 @@ export default function BatchTestPage() {
           return;
         }
 
-        // Call API to start test (checks limits)
-        console.log('MockTestPage: Starting test request...');
-        
         // Get session and pass token in header
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('MockTestPage: Session:', session ? 'EXISTS' : 'NULL');
         
-        const response = await fetch('/api/test/start', {
+        const response = await fetch(`/api/mock-tests/${testNumber}/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -70,8 +68,8 @@ export default function BatchTestPage() {
           return;
         }
 
-        setBatch(data.batch);
-        setQuestions(data.questions);
+        setTestResultId(data.test.testResultId);
+        setQuestions(data.questions || []);
         setLoading(false);
       } catch (err) {
         setError('Failed to load test');
@@ -80,10 +78,15 @@ export default function BatchTestPage() {
     };
 
     void startTest();
-  }, [batchId, router]);
+  }, [testNumber, batchId, router]);
 
   const handleSubmit = async () => {
     try {
+      if (!testResultId) {
+        setError('Test not started properly');
+        return;
+      }
+
       // Get session and pass token in header
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -94,7 +97,7 @@ export default function BatchTestPage() {
           'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
         },
         body: JSON.stringify({
-          batchId,
+          testResultId,
           answers,
           timeTakenSeconds: 0,
         }),
@@ -131,15 +134,14 @@ export default function BatchTestPage() {
           <h1 className="mt-3 text-2xl font-bold">Error</h1>
           <p className="mt-3 text-slate-600">{error}</p>
           <Link href="/mock-tests">
-            <Button className="mt-6">Back to Batches</Button>
+            <Button className="mt-6">Back to Mock Tests</Button>
           </Link>
         </CardBody>
       </Card>
     </main>;
   }
 
-  if (!batch) return <p className="p-6">Loading...</p>;
-  if (!questions.length) return <main className="p-6"><h1 className="text-2xl font-bold">{batch.batch_name}</h1><p className="mt-3">No active questions are available in this batch.</p></main>;
+  if (!questions.length) return <main className="p-6"><h1 className="text-2xl font-bold">Test {testNumber}</h1><p className="mt-3">No questions are available for this test.</p></main>;
 
   const question = questions[index];
 
@@ -147,11 +149,11 @@ export default function BatchTestPage() {
     return <main className="mx-auto max-w-4xl p-6">
       <Card>
         <CardBody className="p-8">
-          <div className="mb-8 text-center">
-            <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
-            <h1 className="mt-4 text-3xl font-bold">Test Complete!</h1>
-            <p className="mt-2 text-slate-600">{batch.batch_name}</p>
-          </div>
+            <div className="mb-8 text-center">
+              <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
+              <h1 className="mt-4 text-3xl font-bold">Test Complete!</h1>
+              <p className="mt-2 text-slate-600">Test {testNumber}</p>
+            </div>
 
           <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="rounded-lg bg-blue-50 p-4 text-center">
@@ -196,7 +198,7 @@ export default function BatchTestPage() {
               <Button variant="outline" className="w-full">View Results</Button>
             </Link>
             <Link href="/mock-tests" className="flex-1">
-              <Button className="w-full">Back to Batches</Button>
+              <Button className="w-full">Back to Mock Tests</Button>
             </Link>
           </div>
         </CardBody>

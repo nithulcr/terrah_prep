@@ -11,10 +11,10 @@ export async function POST(request: Request) {
   try {
     console.log('API: Submitting test...');
     const body = await request.json();
-    const { batchId, answers, timeTakenSeconds } = body;
+    const { testResultId, answers, timeTakenSeconds } = body;
 
-    if (!batchId || !answers) {
-      return NextResponse.json({ error: 'Batch ID and answers are required' }, { status: 400 });
+    if (!testResultId || !answers) {
+      return NextResponse.json({ error: 'Test Result ID and answers are required' }, { status: 400 });
     }
 
     // Get token from Authorization header
@@ -59,6 +59,19 @@ export async function POST(request: Request) {
       console.error('API: Auth failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get test result to find batch_id
+    const { data: testResult, error: testResultError } = await supabase
+      .from('test_results')
+      .select('*')
+      .eq('id', testResultId)
+      .single();
+
+    if (testResultError || !testResult) {
+      return NextResponse.json({ error: 'Test result not found' }, { status: 404 });
+    }
+
+    const batchId = testResult.batch_id;
 
     // Get batch details
     const { data: batch, error: batchError } = await supabase
@@ -118,12 +131,10 @@ export async function POST(request: Request) {
     const totalQuestions = questions.length;
     const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
-    // Create test result
-    const { data: testResult, error: testResultError } = await supabase
+    // Update test result with scores
+    const { data: updatedTestResult, error: updateError } = await supabase
       .from('test_results')
-      .insert({
-        user_id: user.id,
-        batch_id: batchId,
+      .update({
         score,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,
@@ -133,17 +144,18 @@ export async function POST(request: Request) {
         negative_marks: negativeMarks,
         percentage,
       })
+      .eq('id', testResultId)
       .select()
       .single();
 
-    if (testResultError || !testResult) {
-      console.error('Error creating test result:', testResultError);
+    if (updateError || !updatedTestResult) {
+      console.error('Error updating test result:', updateError);
       return NextResponse.json({ error: 'Failed to save test result' }, { status: 500 });
     }
 
     // Create user answers
     const answersToInsert = userAnswers.map((answer) => ({
-      test_result_id: testResult.id,
+      test_result_id: testResultId,
       ...answer,
     }));
 
@@ -157,7 +169,7 @@ export async function POST(request: Request) {
     }
 
     // Increment usage counters
-    await usageService.incrementUsage(user.id, {
+    await usageService.incrementUsage(supabase, user.id, {
       questions: totalQuestions,
       tests: 1,
     });
@@ -166,7 +178,7 @@ export async function POST(request: Request) {
     const { data: userAnswersData, error: userAnswersError } = await supabase
       .from('user_answers')
       .select('*, question:questions(*, category:categories(*))')
-      .eq('test_result_id', testResult.id)
+      .eq('test_result_id', testResultId)
       .order('question_id', { ascending: true });
 
     const userAnswersWithQuestions = userAnswersData || [];
@@ -174,7 +186,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       result: {
-        id: testResult.id,
+        id: testResultId,
         score,
         totalQuestions,
         correctAnswers,

@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     // Check if user has bookmark permission
-    const { plan } = await usageService.getUserUsageWithPlan(user.id);
+    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
     
     if (!plan || !plan.allow_bookmarks) {
       return NextResponse.json(
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user has bookmark permission
-    const { plan } = await usageService.getUserUsageWithPlan(user.id);
+    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
     
     if (!plan || !plan.allow_bookmarks) {
       return NextResponse.json(

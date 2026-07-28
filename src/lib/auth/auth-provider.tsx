@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = async (userId: string) => {
     try {
       console.log('AuthProvider: Fetching profile for user:', userId);
-      const { profile: userProfile, error } = await profileService.getProfile(userId);
+      const { profile: userProfile, error } = await profileService.getProfile(supabase, userId);
       
       // Only log actual errors, not missing profiles (which is expected right after signup)
       if (error) {
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchSubscription = async (userId: string) => {
     try {
-      const { subscription: userSubscription, error } = await subscriptionService.getUserSubscription(userId);
+      const { subscription: userSubscription, error } = await subscriptionService.getUserSubscription(supabase, userId);
       
       if (error || !userSubscription) {
         // Subscription is optional, so we don't log errors
@@ -119,10 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUsage = async (userId: string) => {
     try {
       // Reset daily usage if needed (non-critical, won't throw)
-      await usageService.resetDailyUsageIfNeeded(userId);
+      await usageService.resetDailyUsageIfNeeded(supabase, userId);
       
       // Fetch usage summary
-      const { usage: userUsage, error } = await usageService.getUserUsageSummary(userId);
+      const { usage: userUsage, error } = await usageService.getUserUsageSummary(supabase, userId);
       
       // Usage is optional - never fail login if it's missing
       if (error || !userUsage) {

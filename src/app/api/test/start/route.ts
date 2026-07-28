@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     // Check if user can start a mock test
     console.log('API: Checking usage limits...');
-    const { canAccess, reason, redirectTo } = await usageService.canStartMockTest(user.id);
+    const { canAccess, reason, redirectTo } = await usageService.canStartMockTest(supabase, user.id);
 
     console.log('API: Usage check result:', { canAccess, reason, redirectTo });
 
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     }
 
     // Get settings to apply question limits
-    const settings = await settingsService.getAllSettings();
+    const settings = await settingsService.getAllSettings(supabase);
     const totalQuestionsLimit = settings.total_questions;
     const questionsPerCategory = settings.questions_per_category || 0;
 

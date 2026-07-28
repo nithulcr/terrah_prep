@@ -18,7 +18,7 @@ export async function GET() {
     }
 
     // Check if user has analytics permission
-    const { plan } = await usageService.getUserUsageWithPlan(user.id);
+    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
     
     if (!plan || !plan.allow_analytics) {
       return NextResponse.json(

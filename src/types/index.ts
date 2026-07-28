@@ -192,6 +192,8 @@ export interface TestSet {
     batch_name: string;
   };
   questions?: Array<TestSetQuestion & { question: Question }>;
+  status?: 'available' | 'started' | 'completed' | 'locked';
+  hasAttempted?: boolean;
 }
 
 export interface TestSetQuestion {
@@ -219,4 +221,19 @@ export interface TestSetStats {
   completedTests: number;
   remainingTests: number;
   currentPlan: string;
+}
+
+export interface DynamicTest {
+  testNumber: number;
+  name: string;
+  totalQuestions: number;
+  status: 'available' | 'started' | 'completed' | 'locked';
+  hasAttempted: boolean;
+}
+
+export interface CategoryQuestionCount {
+  categoryId: number;
+  categoryName: string;
+  categorySlug: string;
+  count: number;
 }
