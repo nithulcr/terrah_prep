@@ -5,46 +5,66 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Card, CardBody } from '@/components/ui';
 import { signIn } from '@/lib/auth/auth';
+import { useAuth } from '@/lib/auth/use-auth';
 import { supabase } from '@/lib/supabase/client';
 import { BookOpen, Mail, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect if already logged in - IMMEDIATE redirect
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.push('/dashboard');
-      }
-    };
-    checkUser();
-  }, [router]);
+    console.log('LoginPage: Redirect check - user:', !!user, 'authLoading:', authLoading);
+    
+    // Redirect immediately if user exists, regardless of authLoading
+    if (user) {
+      console.log('LoginPage: User already authenticated, redirecting to /dashboard');
+      // Use window.location for hard redirect to ensure navigation
+      window.location.href = '/dashboard';
+    }
+  }, [user, router]);
+
+  // If user is logged in, don't render the login form at all
+  if (user) {
+    console.log('LoginPage: User is logged in, not rendering login form');
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    console.log('Login: Attempting login for', email);
+    
     const result = await signIn(email, password);
+    
+    console.log('Login: Sign in result:', result);
     
     if (result.success) {
       // Wait for session to be established to avoid race conditions
       const { data: { session } } = await supabase.auth.getSession();
       
+      console.log('Login: Session after sign in:', session);
+      
       if (session) {
+        console.log('Login: Redirecting to /dashboard');
         router.replace('/dashboard');
       } else {
         // Session not yet available, wait briefly and check again
+        console.log('Login: No session yet, waiting 500ms');
         setTimeout(() => {
+          console.log('Login: Redirecting to /dashboard after delay');
           router.replace('/dashboard');
         }, 500);
       }
     } else {
+      console.error('Login: Sign in failed:', result.error);
       setError(result.error || 'Failed to sign in');
     }
     

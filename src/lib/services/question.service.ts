@@ -2,9 +2,9 @@
 import { CorrectOption, DifficultyLevel, Question } from '@/types';
 
 export interface QuestionCreateData {
-  batch_id: string;
-  category_id: string;
-  question_text: string;
+  batch_id: number;
+  category_id: number;
+  question: string;
   option_a: string;
   option_b: string;
   option_c: string;
@@ -16,6 +16,7 @@ export interface QuestionCreateData {
   marks: number;
   negative_marks: number;
   question_image?: string | null;
+  options_image?: string | null;
   is_active: boolean;
 }
 
@@ -24,12 +25,12 @@ export type QuestionUpdateData = Partial<QuestionCreateData>;
 const questionSelect = '*, category:categories(*), batch:batches(*)';
 
 export const questionService = {
-  async getQuestion(questionId: string) {
+  async getQuestion(questionId: number) {
     const { data, error } = await supabase.from('questions').select(questionSelect).eq('id', questionId).single();
     return { question: data as Question | null, error: error?.message ?? null };
   },
 
-  async getQuestionsByBatch(batchId: string) {
+  async getQuestionsByBatch(batchId: number) {
     const { data, error } = await supabase
       .from('questions')
       .select(questionSelect)
@@ -43,7 +44,7 @@ export const questionService = {
     return { question: data as Question | null, error: error?.message ?? null };
   },
 
-  async updateQuestion(questionId: string, values: QuestionUpdateData) {
+  async updateQuestion(questionId: number, values: QuestionUpdateData) {
     const { data, error } = await supabase
       .from('questions')
       .update(values)
@@ -53,7 +54,7 @@ export const questionService = {
     return { question: data as Question | null, error: error?.message ?? null };
   },
 
-  async deleteQuestion(questionId: string) {
+  async deleteQuestion(questionId: number) {
     const { error } = await supabase.from('questions').delete().eq('id', questionId);
     return { success: !error, error: error?.message ?? null };
   },

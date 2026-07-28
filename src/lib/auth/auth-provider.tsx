@@ -6,9 +6,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Profile, Subscription } from '@/types';
+import { Profile, Subscription, UsageSummary } from '@/types';
 import { profileService } from '@/lib/services/profile.service';
 import { subscriptionService } from '@/lib/services/subscription.service';
+import { usageService } from '@/lib/services/usage.service';
 
 // ============================================
 // TYPES
@@ -18,10 +19,12 @@ interface AuthContextType {
   user: any | null;
   profile: Profile | null;
   subscription: Subscription | null;
+  usage: UsageSummary | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  refreshUsage: () => Promise<void>;
 }
 
 // ============================================
@@ -38,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ============================================
@@ -46,20 +50,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('AuthProvider: Fetching profile for user:', userId);
       const { profile: userProfile, error } = await profileService.getProfile(userId);
       
       // Only log actual errors, not missing profiles (which is expected right after signup)
       if (error) {
-        console.error('Error fetching profile:', error);
+        console.error('AuthProvider: Error fetching profile:', error);
       }
       
-     console.log("Fetched Profile:", userProfile);
-setProfile(userProfile);
+      console.log('AuthProvider: Profile fetched:', userProfile);
+      setProfile(userProfile);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('AuthProvider: Error fetching profile:', error);
       setProfile(null);
     }
   };
+
+  // Log session changes
+  useEffect(() => {
+    if (user) {
+      console.log('AuthProvider: User session active:', user.email);
+      
+      // Check if cookies are set
+      if (typeof document !== 'undefined') {
+        const allCookies = document.cookie;
+        console.log('AuthProvider: All cookies:', allCookies);
+        
+        const cookies = document.cookie.split(';').map(c => c.trim());
+        const hasAuthCookie = cookies.some(c => c.includes('sb-access-token'));
+        console.log('AuthProvider: Has sb-access-token cookie:', hasAuthCookie);
+        
+        // Check Supabase session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          console.log('AuthProvider: Current session:', session ? 'EXISTS' : 'NULL');
+          if (session) {
+            console.log('AuthProvider: Session expires at:', new Date(session.expires_at! * 1000));
+          }
+        });
+      }
+    }
+  }, [user]);
 
   // ============================================
   // FETCH SUBSCRIPTION
@@ -83,6 +113,34 @@ setProfile(userProfile);
   };
 
   // ============================================
+  // FETCH USAGE
+  // ============================================
+
+  const fetchUsage = async (userId: string) => {
+    try {
+      // Reset daily usage if needed (non-critical, won't throw)
+      await usageService.resetDailyUsageIfNeeded(userId);
+      
+      // Fetch usage summary
+      const { usage: userUsage, error } = await usageService.getUserUsageSummary(userId);
+      
+      // Usage is optional - never fail login if it's missing
+      if (error || !userUsage) {
+        // Silently set usage to null - user can still use the app
+        setUsage(null);
+        return;
+      }
+
+      setUsage(userUsage);
+    } catch (error) {
+      // Never fail login due to usage fetch errors
+      // This handles the case where user_usage table doesn't exist yet
+      console.error('Error fetching usage (non-critical):', error);
+      setUsage(null);
+    }
+  };
+
+  // ============================================
   // REFRESH FUNCTIONS
   // ============================================
 
@@ -98,6 +156,12 @@ setProfile(userProfile);
     }
   };
 
+  const refreshUsage = async () => {
+    if (user?.id) {
+      await fetchUsage(user.id);
+    }
+  };
+
   // Expose refresh function globally for admin setup
   useEffect(() => {
     (window as any).refreshAuthProfile = async () => {
@@ -106,6 +170,15 @@ setProfile(userProfile);
       }
     };
   }, [user, refreshProfile]);
+
+  // Expose refresh usage function globally
+  useEffect(() => {
+    (window as any).refreshAuthUsage = async () => {
+      if (user?.id) {
+        await refreshUsage();
+      }
+    };
+  }, [user, refreshUsage]);
 
   // ============================================
   // SIGN OUT
@@ -117,6 +190,7 @@ setProfile(userProfile);
       setUser(null);
       setProfile(null);
       setSubscription(null);
+      setUsage(null);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -142,18 +216,24 @@ setProfile(userProfile);
     // Listen for auth changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('AuthProvider: Auth state changed:', event, session?.user?.email);
+        
         setUser(session?.user ?? null);
         setLoading(false); // Don't wait for profile/subscription
 
-        if (session?.user) {
-          // Fetch profile and subscription asynchronously (non-blocking)
-          fetchProfile(session.user.id);
-          fetchSubscription(session.user.id);
-        } else {
-          // Clear data when user signs out
-          setProfile(null);
-          setSubscription(null);
-        }
+      if (session?.user) {
+        // Fetch profile and subscription asynchronously (non-blocking)
+        console.log('AuthProvider: Fetching data for user:', session.user.id);
+        fetchProfile(session.user.id);
+        fetchSubscription(session.user.id);
+        fetchUsage(session.user.id);
+      } else {
+        // Clear data when user signs out
+        console.log('AuthProvider: Clearing user data');
+        setProfile(null);
+        setSubscription(null);
+        setUsage(null);
+      }
       }
     );
 
@@ -170,10 +250,12 @@ setProfile(userProfile);
     user,
     profile,
     subscription,
+    usage,
     loading,
     signOut: handleSignOut,
     refreshProfile,
     refreshSubscription,
+    refreshUsage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -192,3 +274,5 @@ export function useAuth() {
   
   return context;
 }
+
+

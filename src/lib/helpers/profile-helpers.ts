@@ -105,6 +105,7 @@ export function getPlanDisplayName(plan: SubscriptionPlan): string {
     free: 'Free',
     starter: 'Starter',
     pro: 'Pro',
+    premium: 'Premium',
     elite: 'Elite',
   };
 

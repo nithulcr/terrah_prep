@@ -9,6 +9,12 @@ import { config } from '@/lib/config';
 // Server client - for Server Components, Server Actions, Route Handlers
 export async function createServerClient() {
   const cookieStore = await cookies();
+  
+  // Get all cookies and pass them to Supabase
+  const allCookies = cookieStore.getAll();
+  console.log('Server client: All cookies:', allCookies.map(c => c.name));
+  
+  const cookieString = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
   return createClient(
     config.supabase.url,
@@ -21,6 +27,7 @@ export async function createServerClient() {
       global: {
         headers: {
           'X-Client-Info': 'terrah-prep-server',
+          'Cookie': cookieString,
         },
       },
     }

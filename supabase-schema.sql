@@ -1,29 +1,31 @@
-﻿-- Terrah Prep application schema reference
--- The production database contains only: profiles, subscriptions, plans, batches, categories, questions.
+-- Current Terrah Prep schema reference (integer primary keys)
 
 CREATE TABLE IF NOT EXISTS batches (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   batch_name TEXT NOT NULL,
   batch_number INTEGER NOT NULL UNIQUE,
   description TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS categories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
-  parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  description TEXT,
   icon TEXT,
+  parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS questions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
-  question_text TEXT NOT NULL,
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+  question TEXT NOT NULL,
   option_a TEXT NOT NULL,
   option_b TEXT NOT NULL,
   option_c TEXT NOT NULL,
@@ -35,9 +37,22 @@ CREATE TABLE IF NOT EXISTS questions (
   marks NUMERIC NOT NULL DEFAULT 1,
   negative_marks NUMERIC NOT NULL DEFAULT 0,
   question_image TEXT,
+  options_image TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  price NUMERIC NOT NULL,
+  duration_days INTEGER NOT NULL,
+  features JSONB,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS questions_batch_id_idx ON questions(batch_id);
