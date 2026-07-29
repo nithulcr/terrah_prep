@@ -141,7 +141,7 @@ export default function MockTestsPage() {
       case 'locked':
         return <Badge variant="danger">Locked</Badge>;
       default:
-        return <Badge variant="default">Start</Badge>;
+        return <Badge variant="default">Available</Badge>;
     }
   };
 

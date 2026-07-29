@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // Get token from Authorization header
     const authHeader = request.headers.get('Authorization');
     console.log('API: Auth header:', authHeader ? 'EXISTS' : 'MISSING');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.error('API: No Bearer token found');
       return NextResponse.json({ error: 'Unauthorized - no token' }, { status: 401 });
@@ -49,10 +49,10 @@ export async function POST(request: Request) {
     // Get current user from token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    console.log('API: Auth result:', { 
-      hasUser: !!user, 
+    console.log('API: Auth result:', {
+      hasUser: !!user,
       userEmail: user?.email,
-      authError: authError?.message 
+      authError: authError?.message
     });
 
     if (authError || !user) {
@@ -84,15 +84,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
-    // Get all questions for this batch
+    // Get only the questions that were answered/shown in this test
+    const questionIds = Object.keys(answers).map(Number);
+
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
       .select('*')
-      .eq('batch_id', batchId)
-      .eq('is_active', true);
+      .in('id', questionIds);
 
     if (questionsError || !questions || questions.length === 0) {
-      return NextResponse.json({ error: 'No questions found for this batch' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'No questions found for this test' },
+        { status: 404 }
+      );
     }
 
     // Calculate results
@@ -129,7 +133,10 @@ export async function POST(request: Request) {
 
     const score = correctAnswers;
     const totalQuestions = questions.length;
-    const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+    const percentage =
+      totalQuestions > 0
+        ? Math.round((correctAnswers / totalQuestions) * 100)
+        : 0;
 
     // Update test result with scores
     const { data: updatedTestResult, error: updateError } = await supabase
@@ -149,8 +156,16 @@ export async function POST(request: Request) {
       .single();
 
     if (updateError || !updatedTestResult) {
-      console.error('Error updating test result:', updateError);
-      return NextResponse.json({ error: 'Failed to save test result' }, { status: 500 });
+      console.error("UPDATE ERROR");
+      console.dir(updateError, { depth: null });
+
+      return NextResponse.json(
+        {
+          error: "Failed to save test result",
+          databaseError: updateError,
+        },
+        { status: 500 }
+      );
     }
 
     // Create user answers
