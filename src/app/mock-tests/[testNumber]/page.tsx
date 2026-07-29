@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
-import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function MockTestPage() {
   const searchParams = useSearchParams();
@@ -44,13 +44,16 @@ export default function MockTestPage() {
         // Get session and pass token in header
         const { data: { session } } = await supabase.auth.getSession();
         
+        // Check if this is a retest
+        const allowRetest = searchParams.get('retest') === 'true';
+        
         const response = await fetch(`/api/mock-tests/${testNumber}/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
           },
-          body: JSON.stringify({ batchId }),
+          body: JSON.stringify({ batchId, allowRetest }),
         });
 
         console.log('MockTestPage: Response status:', response.status);
@@ -196,6 +199,15 @@ export default function MockTestPage() {
           <div className="flex gap-4">
             <Link href="/dashboard/results" className="flex-1">
               <Button variant="outline" className="w-full">View Results</Button>
+            </Link>
+            <Link 
+              href={`/mock-tests/${testNumber}?batchId=${batchId}&retest=true`}
+              className="flex-1"
+            >
+              <Button variant="outline" className="w-full border-blue-500 text-blue-700 hover:bg-blue-50">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retake Test
+              </Button>
             </Link>
             <Link href="/mock-tests" className="flex-1">
               <Button className="w-full">Back to Mock Tests</Button>

@@ -38,7 +38,7 @@ export function QuestionForm({ question }: { question?: Question }) {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true);
     const payload = { ...values, explanation: values.explanation || null, question_image: values.question_image || null, options_image: values.options_image || null };
-    const result = question ? await questionService.updateQuestion(question.id, payload) : await questionService.createQuestion(payload);
+    const result = question ? await questionService.updateQuestion(supabase, question.id, payload) : await questionService.createQuestion(supabase, payload);
     setSaving(false);
     if (result.error) { alert(result.error); return; }
     router.push('/admin/questions'); router.refresh();

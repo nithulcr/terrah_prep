@@ -6,7 +6,7 @@ import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { DynamicTest, TestSetStats } from '@/types';
-import { Trophy, Lock, Play, CheckCircle, Crown } from 'lucide-react';
+import { Trophy, Lock, Play, CheckCircle, Crown, RefreshCw } from 'lucide-react';
 
 export default function MockTestsPage() {
   const { user } = useAuth();
@@ -287,7 +287,16 @@ export default function MockTestsPage() {
                                             Upgrade
                                           </Button>
                                         </Link>
-                                      ) : status !== 'completed' && (
+                                      ) : status === 'completed' ? (
+                                        <div className="flex gap-2">
+                                          <Link href={`/mock-tests/${test.testNumber}?batchId=${batch.id}&retest=true`}>
+                                            <Button size="sm" variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50">
+                                              <RefreshCw className="mr-1 h-4 w-4" />
+                                              Retest
+                                            </Button>
+                                          </Link>
+                                        </div>
+                                      ) : (
                                         <Link href={`/mock-tests/${test.testNumber}?batchId=${batch.id}`}>
                                           <Button size="sm">
                                             {status === 'started' ? 'Continue' : 'Start'}

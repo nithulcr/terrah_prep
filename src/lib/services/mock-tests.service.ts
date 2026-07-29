@@ -356,13 +356,15 @@ export const mockTestsService = {
     supabase: SupabaseClient,
     userId: string,
     batchId: number,
-    testNumber: number
+    testNumber: number,
+    allowRetest: boolean = false
   ): Promise<{ canAccess: boolean; reason?: string }> {
     try {
       console.log('=== canAccessTest ===');
       console.log('userId:', userId);
       console.log('batchId:', batchId);
       console.log('testNumber:', testNumber);
+      console.log('allowRetest:', allowRetest);
 
       // Get user's plan
       const { data: usageData } = await supabase
@@ -398,12 +400,16 @@ export const mockTestsService = {
 
       console.log('Query Result - Existing Test Result:', existingResult);
 
-      if (existingResult) {
+      if (existingResult && !allowRetest) {
         console.log('Access denied: Test already completed');
         return {
           canAccess: false,
           reason: 'You have already completed this test.',
         };
+      }
+
+      if (existingResult && allowRetest) {
+        console.log('Retest allowed: User is retaking the test');
       }
 
       console.log('Access granted');

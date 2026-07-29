@@ -12,7 +12,7 @@ export async function POST(
     const resolvedParams = await params;
     const testNumber = Number(resolvedParams.testNumber);
     const body = await request.json();
-    const { batchId } = body;
+    const { batchId, allowRetest } = body;
 
     if (!batchId || !testNumber || testNumber < 1) {
       return NextResponse.json({ error: 'Batch ID and valid test number are required' }, { status: 400 });
@@ -41,7 +41,7 @@ export async function POST(
     }
 
     // Check if user can access this test
-    const { canAccess, reason } = await mockTestsService.canAccessTest(supabase, user.id, Number(batchId), testNumber);
+    const { canAccess, reason } = await mockTestsService.canAccessTest(supabase, user.id, Number(batchId), testNumber, allowRetest);
 
     if (!canAccess) {
       return NextResponse.json({
