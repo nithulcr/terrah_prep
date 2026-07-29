@@ -102,6 +102,7 @@ export default function MockTestPage() {
         body: JSON.stringify({
           testResultId,
           answers,
+          questionIds: questions.map(q => q.id),
           timeTakenSeconds: 0,
         }),
       });
@@ -177,6 +178,21 @@ export default function MockTestPage() {
             </div>
           </div>
 
+          <div className="mb-8 grid grid-cols-3 gap-4">
+            <div className="rounded-lg bg-emerald-50 p-4 text-center">
+              <p className="text-sm text-slate-600">Earned Marks</p>
+              <p className="text-3xl font-bold text-emerald-600">{result.earnedMarks}</p>
+            </div>
+            <div className="rounded-lg bg-orange-50 p-4 text-center">
+              <p className="text-sm text-slate-600">Negative Marks</p>
+              <p className="text-3xl font-bold text-orange-600">{result.negativeMarks}</p>
+            </div>
+            <div className="rounded-lg bg-purple-50 p-4 text-center">
+              <p className="text-sm text-slate-600">Final Marks</p>
+              <p className="text-3xl font-bold text-purple-600">{result.finalMarks}</p>
+            </div>
+          </div>
+
           <div className="mb-8">
             <div className="mb-2 flex justify-between text-sm">
               <span className="text-slate-600">Percentage</span>
@@ -189,12 +205,6 @@ export default function MockTestPage() {
               />
             </div>
           </div>
-
-          {result.negativeMarks > 0 && (
-            <div className="mb-6 rounded-lg bg-yellow-50 p-4">
-              <p className="text-sm text-slate-600">Negative Marks: <span className="font-semibold">{result.negativeMarks}</span></p>
-            </div>
-          )}
 
           <div className="flex gap-4">
             <Link href="/dashboard/results" className="flex-1">

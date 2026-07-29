@@ -11,10 +11,10 @@ export async function POST(request: Request) {
   try {
     console.log('API: Submitting test...');
     const body = await request.json();
-    const { testResultId, answers, timeTakenSeconds } = body;
+    const { testResultId, answers, questionIds, timeTakenSeconds } = body;
 
-    if (!testResultId || !answers) {
-      return NextResponse.json({ error: 'Test Result ID and answers are required' }, { status: 400 });
+    if (!testResultId || !questionIds) {
+      return NextResponse.json({ error: 'Test Result ID and questionIds are required' }, { status: 400 });
     }
 
     // Get token from Authorization header
@@ -84,9 +84,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
-    // Get only the questions that were answered/shown in this test
-    const questionIds = Object.keys(answers).map(Number);
-
+    // Get questions using questionIds from request body
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
       .select('*')
@@ -103,7 +101,7 @@ export async function POST(request: Request) {
     let correctAnswers = 0;
     let wrongAnswers = 0;
     let skippedAnswers = 0;
-    let totalMarks = 0;
+    let earnedMarks = 0;
     let negativeMarks = 0;
 
     const userAnswers: any[] = [];
@@ -116,10 +114,9 @@ export async function POST(request: Request) {
         skippedAnswers++;
       } else if (isCorrect) {
         correctAnswers++;
-        totalMarks += Number(question.marks);
+        earnedMarks += Number(question.marks);
       } else {
         wrongAnswers++;
-        totalMarks += Number(question.marks);
         negativeMarks += Number(question.negative_marks);
       }
 
@@ -131,7 +128,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const score = correctAnswers;
+    const finalMarks = earnedMarks - negativeMarks;
     const totalQuestions = questions.length;
     const percentage =
       totalQuestions > 0
@@ -142,7 +139,7 @@ export async function POST(request: Request) {
     const { data: updatedTestResult, error: updateError } = await supabase
       .from('test_results')
       .update({
-        score,
+        score: correctAnswers,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,
         wrong_answers: wrongAnswers,
@@ -202,13 +199,15 @@ export async function POST(request: Request) {
       success: true,
       result: {
         id: testResultId,
-        score,
+        score: correctAnswers,
         totalQuestions,
         correctAnswers,
         wrongAnswers,
         skippedAnswers,
-        timeTakenSeconds: timeTakenSeconds || 0,
+        earnedMarks,
         negativeMarks,
+        finalMarks,
+        timeTakenSeconds: timeTakenSeconds || 0,
         percentage,
         questions: userAnswersWithQuestions,
       },
