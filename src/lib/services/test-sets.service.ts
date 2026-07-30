@@ -221,18 +221,29 @@ export const testSetsService = {
         unassignedQuestions.map(q => q.id)
       );
 
-      console.log('SHUFFLED QUESTION IDs (first 10):', shuffledIds.slice(0, 10));
-      console.log('Total questions to distribute:', shuffledIds.length);
+      console.log('========================================');
+      console.log('QUESTION DISTRIBUTION');
+      console.log('========================================');
+      console.log('Total questions:', shuffledIds.length);
       console.log('Questions per test:', questionsPerTest);
+      console.log('Test sets to create:', Math.floor(shuffledIds.length / questionsPerTest));
+      console.log('');
+      console.log('SHUFFLED QUESTION IDs:');
+      console.log('All IDs:', shuffledIds);
+      console.log('');
+      console.log('DISTRIBUTION:');
+      for (let i = 0; i < Math.floor(shuffledIds.length / questionsPerTest); i++) {
+        const start = i * questionsPerTest;
+        const end = start + questionsPerTest;
+        const testQuestions = shuffledIds.slice(start, end);
+        console.log(`Test ${i + 1}: [${testQuestions.join(', ')}]`);
+      }
+      console.log('========================================');
 
       // Calculate how many test sets we can create
       const testSetsToCreate = Math.floor(
         shuffledIds.length / questionsPerTest
       );
-      
-      console.log('Test sets to create:', testSetsToCreate);
-
-      console.log('Test sets to create:', testSetsToCreate);
 
       if (testSetsToCreate === 0) {
         return {

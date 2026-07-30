@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
 import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock } from 'lucide-react';
 
 export default function MockTestPage() {
+
+
+  const params = useParams();
+
   const searchParams = useSearchParams();
+
+  const testNumber = Number(params.testNumber);
+
+  const batchId = Number(searchParams.get("batchId"));
   const router = useRouter();
-  const testNumber = Number(searchParams.get('testNumber') || 1);
-  const batchId = Number(searchParams.get('batchId'));
-  
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -38,7 +44,7 @@ export default function MockTestPage() {
       try {
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (!user) {
           setError('Please login to start the test');
           setLoading(false);
@@ -47,17 +53,27 @@ export default function MockTestPage() {
 
         // Get session and pass token in header
         const { data: { session } } = await supabase.auth.getSession();
-        
+
+        if (!session) {
+          setError('Please login to start the test');
+          setLoading(false);
+          return;
+        }
+
         // Check if this is a retest
         const allowRetest = searchParams.get('retest') === 'true';
-        
-        const response = await fetch(`/api/mock-tests/${testNumber}/start`, {
+
+        console.log("Starting Test", testNumber);
+        console.log("Session exists:", !!session);
+        console.log("Token length:", session.access_token?.length);
+
+        const response = await fetch('/api/test/start', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+            'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ batchId, allowRetest }),
+          body: JSON.stringify({ batchId, testNumber, allowRetest }),
         });
 
         console.log('MockTestPage: Response status:', response.status);
@@ -75,7 +91,9 @@ export default function MockTestPage() {
           return;
         }
 
-        setTestResultId(data.test.testResultId);
+        console.log('MockTestPage: Test started successfully:', data);
+        console.log('MockTestPage: Question IDs received:', data.questions?.map((q: Question) => q.id));
+        setTestResultId(data.testResultId);
         setQuestions(data.questions || []);
         setLoading(false);
       } catch (err) {
@@ -96,7 +114,7 @@ export default function MockTestPage() {
 
       // Get session and pass token in header
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const response = await fetch('/api/test/submit', {
         method: 'POST',
         headers: {
@@ -120,7 +138,7 @@ export default function MockTestPage() {
 
       setResult(data.result);
       setSubmitted(true);
-      
+
       // Redirect to mock tests page after 2 seconds to show updated status
       setTimeout(() => {
         window.location.href = '/mock-tests';
@@ -146,6 +164,7 @@ export default function MockTestPage() {
           <AlertCircle className="mx-auto h-12 w-12 text-red-600" />
           <h1 className="mt-3 text-2xl font-bold">Error</h1>
           <p className="mt-3 text-slate-600">{error}</p>
+          <p className="mt-2 text-sm text-red-600">Check browser console for details</p>
           <Link href="/mock-tests">
             <Button className="mt-6">Back to Mock Tests</Button>
           </Link>
@@ -162,11 +181,11 @@ export default function MockTestPage() {
     return <main className="mx-auto max-w-4xl p-6">
       <Card>
         <CardBody className="p-8">
-            <div className="mb-8 text-center">
-              <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
-              <h1 className="mt-4 text-3xl font-bold">Test Complete!</h1>
-              <p className="mt-2 text-slate-600">Test {testNumber}</p>
-            </div>
+          <div className="mb-8 text-center">
+            <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
+            <h1 className="mt-4 text-3xl font-bold">Test Complete!</h1>
+            <p className="mt-2 text-slate-600">Test {testNumber}</p>
+          </div>
 
           <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="rounded-lg bg-blue-50 p-4 text-center">
@@ -208,7 +227,7 @@ export default function MockTestPage() {
               <span className="font-semibold">{result.percentage}%</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-              <div 
+              <div
                 className="h-full rounded-full bg-blue-600 transition-all"
                 style={{ width: `${result.percentage}%` }}
               />
@@ -219,7 +238,7 @@ export default function MockTestPage() {
             <Link href="/dashboard/results" className="flex-1">
               <Button variant="outline" className="w-full">View Results</Button>
             </Link>
-            <Link 
+            <Link
               href={`/mock-tests/${testNumber}?batchId=${batchId}&retest=true`}
               className="flex-1"
             >
@@ -249,7 +268,7 @@ export default function MockTestPage() {
         <span className="font-semibold">{answeredCount} / {questions.length} Answered</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-        <div 
+        <div
           className="h-full rounded-full bg-blue-600 transition-all"
           style={{ width: `${progressPercentage}%` }}
         />
@@ -273,17 +292,16 @@ export default function MockTestPage() {
             <button
               key={option.key}
               onClick={() => setAnswers((all) => ({ ...all, [question.id]: option.key }))}
-              className={`block w-full rounded border p-3 text-left transition-colors ${
-                answers[question.id] === option.key
+              className={`block w-full rounded border p-3 text-left transition-colors ${answers[question.id] === option.key
                   ? 'border-blue-600 bg-blue-50'
                   : 'border-slate-200 hover:border-blue-300'
-              }`}
+                }`}
             >
               <strong>{option.key}.</strong> {option.text}
             </button>
           ))}
         </div>
-        
+
         {/* Action Buttons */}
         <div className="mt-4 flex gap-2">
           <Button

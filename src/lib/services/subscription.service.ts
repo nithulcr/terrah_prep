@@ -236,11 +236,11 @@ export const subscriptionService = {
       // Check monthly mock test limit
       const monthlyLimit = summary.monthly_mock_test_limit;
       if (monthlyLimit !== null && monthlyLimit !== undefined) {
-        const remaining = summary.monthly_mock_test_limit - summary.tests_this_month;
+        const remaining = monthlyLimit - summary.tests_this_month;
         if (remaining <= 0) {
           return {
             canAccess: false,
-            reason: `Monthly Mock Test Limit Reached (${summary.monthly_mock_test_limit}/${summary.monthly_mock_test_limit}). Upgrade or wait for next month.`,
+            reason: `Monthly Mock Test Limit Reached (${monthlyLimit}/${monthlyLimit}). Upgrade or wait for next month.`,
             redirectTo: '/pricing',
             remainingTests: 0,
           };

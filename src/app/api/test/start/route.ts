@@ -20,6 +20,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Batch ID and Test Number are required' }, { status: 400 });
     }
 
+    const allowRetest = body.allowRetest === true;
+
     // Get token from Authorization header
     const authHeader = request.headers.get('Authorization');
     console.log('API: Auth header:', authHeader ? 'EXISTS' : 'MISSING');
@@ -117,6 +119,69 @@ export async function POST(request: Request) {
       totalQuestions: testSet.total_questions,
     });
 
+    // Create test result
+    console.log('TEST START API - Creating test result...');
+    const { data: testResult, error: testResultError } = await supabase
+      .from('test_results')
+      .insert({
+        user_id: user.id,
+        batch_id: Number(batchId),
+        test_number: testSet.set_number,
+        score: 0,
+        total_questions: 0,
+        correct_answers: 0,
+        wrong_answers: 0,
+        skipped_answers: 0,
+        time_taken_seconds: 0,
+        negative_marks: 0,
+        percentage: 0,
+      })
+      .select('id')
+      .single();
+
+    console.log('TEST START API - Test result insert response:', {
+      testResult,
+      testResultError,
+    });
+
+    let finalTestResultId: number;
+    
+    if (testResultError || !testResult) {
+      console.error('TEST START API - Error creating test result:', testResultError);
+      
+      // Check if it's a duplicate key error
+      if (testResultError?.code === '23505') {
+        // Try to get existing test result
+        const { data: existingResult } = await supabase
+          .from('test_results')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('batch_id', batchId)
+          .eq('test_number', testSet.set_number)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (existingResult) {
+          console.log('TEST START API - Using existing test result:', existingResult.id);
+          finalTestResultId = existingResult.id;
+        } else {
+          return NextResponse.json({ 
+            error: 'Failed to create test result',
+            details: testResultError.message 
+          }, { status: 500 });
+        }
+      } else {
+        return NextResponse.json({ 
+          error: 'Failed to create test result',
+          details: testResultError?.message 
+        }, { status: 500 });
+      }
+    } else {
+      finalTestResultId = testResult.id;
+      console.log('TEST START API - Test result created:', finalTestResultId);
+    }
+
     // Get questions from test_set_questions (NO generation - read only)
     const questionsResult = await testSetsService.getTestSetQuestions(supabase, testSet.id);
     
@@ -133,8 +198,10 @@ export async function POST(request: Request) {
     });
 
     console.log('API: Success! Returning', limitedQuestions.length, 'questions');
+
     return NextResponse.json({
       success: true,
+      testResultId: finalTestResultId,
       batch,
       questions: limitedQuestions,
       testNumber: testSet.set_number,

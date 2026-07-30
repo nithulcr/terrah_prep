@@ -220,7 +220,7 @@ export const mockTestsService = {
           name: `Test ${i}`,
           totalQuestions: questionsPerTest,
           status,
-          hasAttempted: isCompleted || isInProgress,
+          hasAttempted: Boolean(isCompleted || isInProgress),
           completedAt: completedResult?.completed_at || undefined,
           score: completedResult?.score || undefined,
           percentage: completedResult?.percentage || undefined,
