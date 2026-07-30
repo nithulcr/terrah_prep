@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '@/lib/config';
 import { mockTestsService } from '@/lib/services/mock-tests.service';
-import { settingsService } from '@/lib/services/settings.service';
+import { testSetsService } from '@/lib/services/test-sets.service';
 
 export async function POST(
   request: Request,
@@ -17,6 +17,9 @@ export async function POST(
     if (!batchId || !testNumber || testNumber < 1) {
       return NextResponse.json({ error: 'Batch ID and valid test number are required' }, { status: 400 });
     }
+
+    // Convert allowRetest to boolean
+    const shouldAllowRetest = allowRetest === true || allowRetest === 'true';
 
     // Get token from Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -41,7 +44,7 @@ export async function POST(
     }
 
     // Check if user can access this test
-    const { canAccess, reason } = await mockTestsService.canAccessTest(supabase, user.id, Number(batchId), testNumber, allowRetest);
+    const { canAccess, reason } = await mockTestsService.canAccessTest(supabase, user.id, Number(batchId), testNumber, shouldAllowRetest);
 
     if (!canAccess) {
       return NextResponse.json({
@@ -62,13 +65,29 @@ export async function POST(
       return NextResponse.json({ error: startError || 'Failed to start test' }, { status: 500 });
     }
 
-    // Get questions for this test
-    const settings = await settingsService.getAllSettings(supabase);
-    const questions = await mockTestsService.getTestQuestions(supabase, Number(batchId), testNumber, settings.shuffle_questions);
+    // Get questions from test_sets (NO generation - read only)
+    const testSetResult = await testSetsService.getTestSet(supabase, Number(batchId), testNumber);
+    
+    if (!testSetResult.testSet) {
+      return NextResponse.json({ error: testSetResult.error || 'Test not found' }, { status: 404 });
+    }
 
-    if (!questions || questions.length === 0) {
+    const questionsResult = await testSetsService.getTestSetQuestions(supabase, testSetResult.testSet.id);
+    
+    if (!questionsResult || !questionsResult.questions || questionsResult.questions.length === 0) {
       return NextResponse.json({ error: 'No questions found for this test' }, { status: 404 });
     }
+
+    const questions = questionsResult.questions;
+
+    // Log debug information
+    console.log('START API - Loaded Test Set:', {
+      testSetId: testSetResult.testSet.id,
+      testNumber: testSetResult.testSet.set_number,
+      totalQuestions: testSetResult.testSet.total_questions,
+      loadedQuestions: questions.length,
+      questionIds: questions.map(q => q.id),
+    });
 
     // Return test data
     return NextResponse.json({
@@ -76,7 +95,7 @@ export async function POST(
       test: {
         testNumber,
         name: `Test ${testNumber}`,
-        totalQuestions: questions.length,
+        totalQuestions: questions.length, // Exact count from test_set_questions
         testResultId,
       },
       questions,

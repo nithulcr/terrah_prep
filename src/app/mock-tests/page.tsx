@@ -14,7 +14,7 @@ export default function MockTestsPage() {
   const [testsMap, setTestsMap] = useState<Record<number, DynamicTest[]>>({});
   const [statsMap, setStatsMap] = useState<Record<number, TestSetStats>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedBatch, setSelectedBatch] = useState<number | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<number | null>(batches[0]?.id || null);
 
   useEffect(() => {
     if (user) {
@@ -25,11 +25,16 @@ export default function MockTestsPage() {
   const loadBatches = async () => {
     try {
       setLoading(true);
+      console.log('MOCK TESTS PAGE QUERY: batches select active - BEFORE');
       const { data: batchesData } = await supabase
         .from('batches')
         .select('*')
         .eq('is_active', true)
         .order('batch_number');
+
+      console.log('MOCK TESTS PAGE QUERY: batches select active - AFTER', {
+        rowCount: batchesData?.length ?? 0,
+      });
 
       if (batchesData) {
         setBatches(batchesData);
@@ -49,10 +54,7 @@ export default function MockTestsPage() {
 
     for (const batch of batchesData) {
       try {
-        const [tests, stats] = await Promise.all([
-          fetchTests(batch.id),
-          fetchStats(batch.id),
-        ]);
+        const { tests, stats } = await fetchMockTests(batch.id);
 
         testsMapTemp[batch.id] = tests;
         statsMapTemp[batch.id] = stats;
@@ -65,70 +67,46 @@ export default function MockTestsPage() {
     setStatsMap(statsMapTemp);
   };
 
-  const fetchTests = async (batchId: number): Promise<DynamicTest[]> => {
+  const emptyStats = (): TestSetStats => ({
+    totalQuestions: 0,
+    questionsPerTest: 0,
+    totalAvailableTests: 0,
+    completedTests: 0,
+    remainingTests: 0,
+    currentPlan: 'free',
+  });
+
+  const fetchMockTests = async (batchId: number): Promise<{
+    tests: DynamicTest[];
+    stats: TestSetStats;
+  }> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      if (!session) return { tests: [], stats: emptyStats() };
 
+      console.log('MOCK TESTS PAGE API: /api/mock-tests - BEFORE', { batchId });
       const response = await fetch(`/api/mock-tests?batchId=${batchId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
       });
 
-      if (!response.ok) return [];
-
-      const data = await response.json();
-      return data.tests || [];
-    } catch (error) {
-      console.error('Error fetching tests:', error);
-      return [];
-    }
-  };
-
-  const fetchStats = async (batchId: number): Promise<TestSetStats> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        return {
-          totalQuestions: 0,
-          questionsPerTest: 100,
-          totalAvailableTests: 0,
-          completedTests: 0,
-          remainingTests: 0,
-          currentPlan: 'free',
-        };
-      }
-
-      const response = await fetch(`/api/mock-tests?batchId=${batchId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+      console.log('MOCK TESTS PAGE API: /api/mock-tests - AFTER', {
+        batchId,
+        ok: response.ok,
+        status: response.status,
       });
 
-      if (!response.ok) {
-        return {
-          totalQuestions: 0,
-          questionsPerTest: 100,
-          totalAvailableTests: 0,
-          completedTests: 0,
-          remainingTests: 0,
-          currentPlan: 'free',
-        };
-      }
+      if (!response.ok) return { tests: [], stats: emptyStats() };
 
       const data = await response.json();
-      return data.stats;
-    } catch (error) {
-      console.error('Error fetching stats:', error);
       return {
-        totalQuestions: 0,
-        questionsPerTest: 100,
-        totalAvailableTests: 0,
-        completedTests: 0,
-        remainingTests: 0,
-        currentPlan: 'free',
+        tests: data.tests || [],
+        stats: data.stats || emptyStats(),
       };
+    } catch (error) {
+      console.error('Error fetching mock tests:', error);
+      return { tests: [], stats: emptyStats() };
     }
   };
 
@@ -136,12 +114,12 @@ export default function MockTestsPage() {
     switch (status) {
       case 'completed':
         return <Badge variant="success">Completed</Badge>;
-      case 'started':
-        return <Badge variant="info">Continue</Badge>;
+      case 'in_progress':
+        return <Badge variant="warning">In Progress</Badge>;
       case 'locked':
         return <Badge variant="danger">Locked</Badge>;
       default:
-        return <Badge variant="default">Available</Badge>;
+        return <Badge variant="success">Available</Badge>;
     }
   };
 
@@ -149,12 +127,12 @@ export default function MockTestsPage() {
     switch (status) {
       case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'started':
-        return <Play className="h-5 w-5 text-blue-600" />;
+      case 'in_progress':
+        return <Play className="h-5 w-5 text-orange-600" />;
       case 'locked':
         return <Lock className="h-5 w-5 text-red-600" />;
       default:
-        return <Play className="h-5 w-5 text-blue-600" />;
+        return <Play className="h-5 w-5 text-green-600" />;
     }
   };
 
@@ -214,7 +192,7 @@ export default function MockTestsPage() {
                         </p>
                       </div>
                       <Button
-                        variant={isSelected ? 'primary' : 'outline'}
+                        variant={isSelected ? 'outline' : 'primary'}
                         onClick={() => setSelectedBatch(isSelected ? null : batch.id)}
                       >
                         {isSelected ? 'Hide Tests' : 'View Tests'}
@@ -282,7 +260,7 @@ export default function MockTestsPage() {
                                       {getStatusBadge(status)}
                                       {status === 'locked' ? (
                                         <Link href="/pricing">
-                                          <Button size="sm" variant="outline" className="border-yellow-500 text-yellow-700 hover:bg-yellow-50">
+                                          <Button size="sm" variant="primary">
                                             <Crown className="mr-1 h-4 w-4" />
                                             Upgrade
                                           </Button>
@@ -296,10 +274,17 @@ export default function MockTestsPage() {
                                             </Button>
                                           </Link>
                                         </div>
+                                      ) : status === 'in_progress' ? (
+                                        <Link href={`/mock-tests/${test.testNumber}?batchId=${batch.id}`}>
+                                          <Button size="sm" variant="outline" className="border-orange-500 text-orange-700 hover:bg-orange-50">
+                                            <Play className="mr-1 h-4 w-4" />
+                                            Resume
+                                          </Button>
+                                        </Link>
                                       ) : (
                                         <Link href={`/mock-tests/${test.testNumber}?batchId=${batch.id}`}>
-                                          <Button size="sm">
-                                            {status === 'started' ? 'Continue' : 'Start'}
+                                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                                            Start
                                           </Button>
                                         </Link>
                                       )}

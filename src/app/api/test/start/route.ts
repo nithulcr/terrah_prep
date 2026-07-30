@@ -6,18 +6,18 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '@/lib/config';
 import { usageService } from '@/lib/services/usage.service';
-import { settingsService } from '@/lib/services/settings.service';
+import { testSetsService } from '@/lib/services/test-sets.service';
 
 export async function POST(request: Request) {
   try {
     console.log('API: Starting test...');
     const body = await request.json();
-    const { batchId } = body;
+    const { batchId, testNumber } = body;
 
-    console.log('API: Request body:', { batchId });
+    console.log('API: Request body:', { batchId, testNumber });
 
-    if (!batchId) {
-      return NextResponse.json({ error: 'Batch ID is required' }, { status: 400 });
+    if (!batchId || !testNumber) {
+      return NextResponse.json({ error: 'Batch ID and Test Number are required' }, { status: 400 });
     }
 
     // Get token from Authorization header
@@ -99,73 +99,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
-    // Get questions for the batch
-    console.log('API: Fetching questions...');
-    const { data: questions, error: questionsError } = await supabase
-      .from('questions')
-      .select('*, category:categories(*)')
-      .eq('batch_id', batchId)
+    // Get the specific test set by set_number (NO generation - read only)
+    const { data: testSet, error: testSetError } = await supabase
+      .from('test_sets')
+      .select('id, set_number, total_questions')
+      .eq('batch_id', Number(batchId))
+      .eq('set_number', Number(testNumber))
       .eq('is_active', true)
-      .order('created_at', { ascending: true });
+      .single();
 
-    console.log('API: Questions result:', { 
-      count: questions?.length || 0, 
-      error: questionsError?.message 
+    if (testSetError || !testSet) {
+      return NextResponse.json({ error: 'Test set not found or not available' }, { status: 404 });
+    }
+    console.log('TEST START API - Using test set:', {
+      testSetId: testSet.id,
+      testNumber: testSet.set_number,
+      totalQuestions: testSet.total_questions,
     });
 
-    if (questionsError || !questions || questions.length === 0) {
-      return NextResponse.json({ error: 'No questions available for this batch' }, { status: 404 });
+    // Get questions from test_set_questions (NO generation - read only)
+    const questionsResult = await testSetsService.getTestSetQuestions(supabase, testSet.id);
+    
+    if (!questionsResult || !questionsResult.questions || questionsResult.questions.length === 0) {
+      return NextResponse.json({ error: 'No questions available for this test' }, { status: 404 });
     }
 
-    // Get settings to apply question limits
-    const settings = await settingsService.getAllSettings(supabase);
-    const totalQuestionsLimit = settings.total_questions;
-    const questionsPerCategory = settings.questions_per_category || 0;
+    const limitedQuestions = questionsResult.questions;
 
-    console.log('API: Applying question limits:', { 
-      totalQuestionsLimit, 
-      questionsPerCategory,
-      totalAvailable: questions.length 
+    console.log('TEST START API - Loaded questions:', {
+      testSetId: testSet.id,
+      questionCount: limitedQuestions.length,
+      questionIds: limitedQuestions.map(q => q.id),
     });
-
-    // Limit questions based on settings
-    let limitedQuestions = questions;
-    
-    // If questions_per_category is set, limit per category
-    if (questionsPerCategory > 0) {
-      const questionsByCategory = questions.reduce((acc, q) => {
-        const categoryId = q.category_id;
-        if (!acc[categoryId]) {
-          acc[categoryId] = [];
-        }
-        acc[categoryId].push(q);
-        return acc;
-      }, {} as Record<number, any[]>);
-
-      limitedQuestions = (Object.values(questionsByCategory) as any[][])
-        .flatMap((categoryQuestions) => 
-          categoryQuestions
-            .sort(() => Math.random() - 0.5) // Shuffle
-            .slice(0, questionsPerCategory) // Take limited number per category
-        );
-      
-      console.log('API: After category limit:', limitedQuestions.length, 'questions');
-    }
-    
-    // Apply total questions limit
-    if (totalQuestionsLimit > 0 && limitedQuestions.length > totalQuestionsLimit) {
-      limitedQuestions = limitedQuestions
-        .sort(() => Math.random() - 0.5) // Shuffle
-        .slice(0, totalQuestionsLimit);
-      
-      console.log('API: After total limit:', limitedQuestions.length, 'questions');
-    }
 
     console.log('API: Success! Returning', limitedQuestions.length, 'questions');
     return NextResponse.json({
       success: true,
       batch,
       questions: limitedQuestions,
+      testNumber: testSet.set_number,
     });
   } catch (error) {
     console.error('API: Error starting test:', error);

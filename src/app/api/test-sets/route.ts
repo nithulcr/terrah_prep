@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     ]);
 
     // Get user attempts for all test sets
-    const testSetIds = testSets.map(ts => ts.id);
+    const testSetIds = testSets.map((ts) => ts.id);
     const { data: attempts } = await supabase
       .from('user_test_attempts')
       .select('test_set_id, completed_at')
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     const attemptMap = new Map((attempts || []).map((a: any) => [a.test_set_id, a]));
 
     // Enrich test sets with attempt info
-    const enrichedTestSets = testSets.map(testSet => {
+    const enrichedTestSets = testSets.map((testSet) => {
       const attempt = attemptMap.get(testSet.id);
       let status: 'available' | 'started' | 'completed' | 'locked' = 'available';
       

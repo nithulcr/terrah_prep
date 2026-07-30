@@ -1,22 +1,16 @@
 // ============================================
-// TERRAH PREP - DYNAMIC MOCK TESTS SERVICE
+// TERRAH PREP - MOCK TESTS SERVICE
 // ============================================
+// This service handles test availability and access control
+// All question operations are handled by testSetsService
+// ALL unlock logic is database-driven - NO hardcoded rules
 
 import { settingsService } from '@/lib/services/settings.service';
-import { TestSetStats, Question, Category } from '@/types';
+import { testSetsService } from '@/lib/services/test-sets.service';
+import { subscriptionService } from '@/lib/services/subscription.service';
+import { testProgressService } from '@/lib/services/test-progress.service';
+import { TestSetStats, DynamicTest } from '@/types';
 import { SupabaseClient } from '@supabase/supabase-js';
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface DynamicTest {
-  testNumber: number;
-  name: string;
-  totalQuestions: number;
-  status: 'available' | 'started' | 'completed' | 'locked';
-  hasAttempted: boolean;
-}
 
 export interface CategoryQuestionCount {
   categoryId: number;
@@ -25,13 +19,11 @@ export interface CategoryQuestionCount {
   count: number;
 }
 
-// ============================================
-// MOCK TESTS SERVICE
-// ============================================
-
 export const mockTestsService = {
   /**
-   * Get available tests for a batch (dynamically calculated)
+   * Get available tests for a batch
+   * Reads from test_sets table - does NOT generate questions
+   * ALL unlock logic is database-driven
    */
   async getAvailableTests(
     supabase: SupabaseClient,
@@ -49,17 +41,27 @@ export const mockTestsService = {
 
       // Get settings
       const settings = await settingsService.getAllSettings(supabase);
-      console.log('Settings loaded:', settings);
+      const questionsPerTest = settings.total_questions;
+      console.log('Questions per test (from settings):', questionsPerTest);
 
-      // Get all active questions for this batch grouped by category
+      // Get all active questions for this batch
+      console.log('MOCK TESTS QUERY: questions select active category counts - BEFORE', {
+        batchId,
+      });
       const { data: questions, error: questionsError } = await supabase
         .from('questions')
-        .select('category_id, category:categories(*)')
+        .select('id, category_id, category:categories(*)')
         .eq('batch_id', batchId)
         .eq('is_active', true);
 
-      console.log('Query Result - Questions:', questions);
-      console.log('Query Error - Questions:', questionsError);
+      console.log('MOCK TESTS QUERY: questions select active category counts - AFTER', {
+        rowCount: questions?.length ?? 0,
+        error: questionsError,
+      });
+
+      if (questionsError) {
+        console.error('MOCK TESTS QUERY ERROR: questions select active category counts', questionsError);
+      }
 
       if (questionsError || !questions || questions.length === 0) {
         console.log('No questions found for batch');
@@ -67,7 +69,7 @@ export const mockTestsService = {
           tests: [],
           stats: {
             totalQuestions: 0,
-            questionsPerTest: settings.total_questions,
+            questionsPerTest: questionsPerTest,
             totalAvailableTests: 0,
             completedTests: 0,
             remainingTests: 0,
@@ -79,7 +81,6 @@ export const mockTestsService = {
 
       // Count questions per category
       const categoryCountsMap = new Map<number, CategoryQuestionCount>();
-
       questions.forEach((q: any) => {
         const categoryId = q.category_id;
         if (!categoryCountsMap.has(categoryId)) {
@@ -94,108 +95,147 @@ export const mockTestsService = {
       });
 
       const categoryCounts = Array.from(categoryCountsMap.values());
-      console.log('Category Counts:', categoryCounts);
 
-      // Get question counts per category from settings
-      const categoryQuestionSettings: Record<string, number> = {
-        english: settings.english_questions,
-        science: settings.science_questions,
-        'general-knowledge': settings.general_knowledge_questions,
-        mathematics: settings.mathematics_questions,
-        malayalam: settings.malayalam_questions,
-      };
-
-      console.log('Category Question Settings:', categoryQuestionSettings);
-
-      // Calculate available tests based on each category
-      const testCountsPerCategory: number[] = [];
-
-      categoryCounts.forEach((catCount) => {
-        const questionsNeeded = categoryQuestionSettings[catCount.categorySlug] || 0;
-        console.log(`Category ${catCount.categorySlug}: count=${catCount.count}, needed=${questionsNeeded}`);
-        
-        if (questionsNeeded > 0) {
-          const testsFromCategory = Math.floor(catCount.count / questionsNeeded);
-          testCountsPerCategory.push(testsFromCategory);
-          console.log(`  Tests from this category: ${testsFromCategory}`);
-        }
+      // Get user's completed tests
+      console.log('MOCK TESTS QUERY: test_results select completed tests - BEFORE', {
+        batchId,
+        userId,
       });
-
-      // The minimum across all categories determines total available tests
-      const totalAvailableTests = testCountsPerCategory.length > 0
-        ? Math.min(...testCountsPerCategory)
-        : 0;
-
-      console.log('Total Available Tests:', totalAvailableTests);
-
-      // Get user's completed tests for this batch
-      const { data: completedResults, error: completedError } = await supabase
+      const { data: completedResults, error: completedResultsError } = await supabase
         .from('test_results')
-        .select('test_number')
+        .select('test_number, score, percentage, completed_at')
         .eq('user_id', userId)
         .eq('batch_id', batchId)
-        .not('test_number', 'is', null);
+        .not('test_number', 'is', null)
+        .order('test_number', { ascending: true });
 
-      console.log('Query Result - Completed Results:', completedResults);
-      console.log('Query Error - Completed Results:', completedError);
+      console.log('MOCK TESTS QUERY: test_results select completed tests - AFTER', {
+        rowCount: completedResults?.length ?? 0,
+        error: completedResultsError,
+      });
 
-      const completedTestNumbers = new Set(
-        (completedResults || []).map((r: any) => r.test_number)
+      if (completedResultsError) {
+        console.error('MOCK TESTS QUERY ERROR: test_results select completed tests', completedResultsError);
+      }
+
+      const completedTestMap = new Map(
+        (completedResults || []).map((r: any) => [r.test_number, r])
       );
 
-      const completedTests = completedTestNumbers.size;
-      console.log('Completed Tests:', completedTests);
+      const completedTests = completedTestMap.size;
 
-      // Get user's plan
-      const { data: usageData } = await supabase
-        .from('user_usage')
-        .select('subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user's subscription and plan from database
+      console.log('MOCK TESTS QUERY: subscription service - BEFORE', {
+        userId,
+      });
+      const subscriptionInfo = await subscriptionService.getUserSubscription(supabase, userId);
+      
+      console.log('MOCK TESTS QUERY: subscription service - AFTER', {
+        plan: subscriptionInfo.plan?.slug,
+        subscriptionActive: !!subscriptionInfo.subscription,
+      });
 
-      console.log('Query Result - Usage Data:', usageData);
-
-      const subscription = (usageData as any)?.subscription;
-      const plan = subscription?.plan;
+      const plan = subscriptionInfo.plan;
+      const summary = subscriptionInfo.summary;
+      
+      // Determine current plan
       const currentPlan = plan?.slug || 'free';
       console.log('Current Plan:', currentPlan);
 
-      // Calculate accessible tests based on plan
-      let maxAccessibleTests = totalAvailableTests;
-      if (currentPlan === 'free') {
-        maxAccessibleTests = Math.min(totalAvailableTests, 1);
+      // Get total available tests from test_sets table (SOURCE OF TRUTH)
+      const { count: totalAvailableTests, error: testSetCountError } = await testSetsService.getTestSetCount(supabase, batchId);
+
+      if (testSetCountError) {
+        console.error('MOCK TESTS QUERY ERROR: test_sets active count', testSetCountError);
       }
 
-      console.log('Max Accessible Tests:', maxAccessibleTests);
+      console.log('Total available tests (from test_sets):', totalAvailableTests);
 
-      // Generate test list
+      // ============================================
+      // NEW UNLOCK LOGIC - FULLY DATABASE-DRIVEN
+      // ============================================
+      
+      // Get monthly limit from database
+      const monthlyLimit = plan?.monthly_mock_test_limit;
+      
+      // Calculate available tests based on plan limits
+      // availableTests = MIN(generated tests, monthly limit)
+      let availableTests = totalAvailableTests || 0;
+      
+      if (monthlyLimit !== null && monthlyLimit !== undefined && monthlyLimit > 0) {
+        // Paid plan: limit by monthly_mock_test_limit
+        availableTests = Math.min(availableTests, monthlyLimit);
+        console.log('Paid plan - Available tests:', availableTests, '(MIN of', totalAvailableTests, 'and', monthlyLimit, ')');
+      } else {
+        // Free plan: use lifetime_question_limit
+        // Calculate how many tests the user can take based on lifetime limit
+        const lifetimeLimit = plan?.lifetime_question_limit || summary?.lifetime_question_limit || 0;
+        const testsFromLifetimeLimit = lifetimeLimit > 0 ? Math.floor(lifetimeLimit / questionsPerTest) : 1;
+        availableTests = Math.min(availableTests, testsFromLifetimeLimit);
+        console.log('Free plan - Available tests:', availableTests, '(MIN of', totalAvailableTests, 'and', testsFromLifetimeLimit, 'from lifetime limit)');
+      }
+
+      console.log('Final available tests:', availableTests);
+
+      // Check if user has remaining monthly quota
+      const hasRemainingQuota = !monthlyLimit || (summary && summary.tests_this_month < monthlyLimit);
+      console.log('Has remaining quota:', hasRemainingQuota, 'Tests this month:', summary?.tests_this_month, 'Limit:', monthlyLimit);
+
+      // Generate test list with progress tracking
       const tests: DynamicTest[] = [];
-      for (let i = 1; i <= totalAvailableTests; i++) {
-        const isCompleted = completedTestNumbers.has(i);
-        const isLocked = i > maxAccessibleTests;
+      
+      for (let i = 1; i <= (totalAvailableTests || 0); i++) {
+        const completedResult = completedTestMap.get(i);
+        const isCompleted = !!completedResult;
+        const isUnlocked = i <= availableTests;
 
-        let status: 'available' | 'started' | 'completed' | 'locked' = 'available';
-        if (isLocked) {
-          status = 'locked';
-        } else if (isCompleted) {
+        // Get test progress for in_progress detection
+        const testProgress = await testProgressService.getTestProgress(supabase, userId, batchId, i);
+        const isInProgress = !isCompleted && testProgress && testProgress.status === 'in_progress';
+
+        let status: 'available' | 'in_progress' | 'completed' | 'locked' = 'locked';
+        let buttonText = 'Locked';
+        
+        if (isCompleted) {
           status = 'completed';
+          buttonText = 'Completed';
+        } else if (isInProgress) {
+          status = 'in_progress';
+          buttonText = 'Resume';
+        } else if (isUnlocked) {
+          if (hasRemainingQuota) {
+            status = 'available';
+            buttonText = 'Start';
+          } else {
+            status = 'locked';
+            buttonText = 'Monthly Limit Reached';
+          }
+        } else {
+          status = 'locked';
+          buttonText = 'Locked';
         }
 
         tests.push({
           testNumber: i,
           name: `Test ${i}`,
-          totalQuestions: settings.total_questions,
+          totalQuestions: questionsPerTest,
           status,
-          hasAttempted: isCompleted,
+          hasAttempted: isCompleted || isInProgress,
+          completedAt: completedResult?.completed_at || undefined,
+          score: completedResult?.score || undefined,
+          percentage: completedResult?.percentage || undefined,
+          attemptNumber: completedResult?.attempt_number || testProgress?.attemptNumber || 1,
         });
       }
 
+      const remainingTests = Math.max(0, availableTests - completedTests);
+      
       const stats: TestSetStats = {
         totalQuestions: questions.length,
-        questionsPerTest: settings.total_questions,
-        totalAvailableTests,
+        questionsPerTest: questionsPerTest,
+        totalAvailableTests: totalAvailableTests || 0,
         completedTests,
-        remainingTests: totalAvailableTests - completedTests,
+        remainingTests,
         currentPlan,
       };
 
@@ -213,7 +253,7 @@ export const mockTestsService = {
         tests: [],
         stats: {
           totalQuestions: 0,
-          questionsPerTest: 100,
+          questionsPerTest: 0,
           totalAvailableTests: 0,
           completedTests: 0,
           remainingTests: 0,
@@ -221,202 +261,6 @@ export const mockTestsService = {
         },
         categoryCounts: [],
       };
-    }
-  },
-
-  /**
-   * Get questions for a specific test number using LIMIT/OFFSET per category
-   */
-  async getTestQuestions(
-    supabase: SupabaseClient,
-    batchId: number,
-    testNumber: number,
-    shuffleQuestions: boolean = true
-  ): Promise<Question[]> {
-    try {
-      console.log('=== getTestQuestions ===');
-      console.log('batchId:', batchId);
-      console.log('testNumber:', testNumber);
-      console.log('shuffleQuestions:', shuffleQuestions);
-
-      const settings = await settingsService.getAllSettings(supabase);
-      console.log('Settings loaded:', settings);
-
-      // Get all active questions for this batch with categories
-      const { data: questions, error: questionsError } = await supabase
-        .from('questions')
-        .select('*, category:categories(*)')
-        .eq('batch_id', batchId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
-
-      console.log('Query Result - Questions count:', questions?.length);
-      console.log('Query Error - Questions:', questionsError);
-
-      if (questionsError || !questions || questions.length === 0) {
-        console.log('No questions found for batch');
-        return [];
-      }
-
-      // Group questions by category
-      const questionsByCategory = new Map<number, any[]>();
-      questions.forEach((q: any) => {
-        const categoryId = q.category_id;
-        if (!questionsByCategory.has(categoryId)) {
-          questionsByCategory.set(categoryId, []);
-        }
-        questionsByCategory.get(categoryId)!.push(q);
-      });
-
-      console.log('Questions by category:', Array.from(questionsByCategory.entries()).map(([catId, qs]) => ({
-        categoryId: catId,
-        count: qs.length,
-        categoryName: qs[0]?.category?.name
-      })));
-
-      // Get question counts per category from settings
-      const categoryQuestionSettings: Record<string, number> = {
-        english: settings.english_questions,
-        science: settings.science_questions,
-        'general-knowledge': settings.general_knowledge_questions,
-        mathematics: settings.mathematics_questions,
-        malayalam: settings.malayalam_questions,
-      };
-
-      console.log('Category Question Settings:', categoryQuestionSettings);
-
-      // Calculate offset for this test number
-      const offset = (testNumber - 1) * settings.total_questions;
-      console.log('Global offset for test:', offset);
-
-      // Select questions from each category using LIMIT/OFFSET
-      const selectedQuestions: any[] = [];
-
-      questionsByCategory.forEach((categoryQuestions, categoryId) => {
-        const category = categoryQuestions[0]?.category;
-        const categorySlug = category?.slug || 'unknown';
-        const questionsPerCategory = categoryQuestionSettings[categorySlug] || 0;
-
-        console.log(`Processing category ${categorySlug} (ID: ${categoryId}):`);
-        console.log(`  Available questions: ${categoryQuestions.length}`);
-        console.log(`  Questions per category: ${questionsPerCategory}`);
-
-        if (questionsPerCategory > 0) {
-          // Calculate offset within this category
-          const categoryOffset = (testNumber - 1) * questionsPerCategory;
-          const categoryLimit = questionsPerCategory;
-
-          console.log(`  Category offset: ${categoryOffset}`);
-          console.log(`  Category limit: ${categoryLimit}`);
-
-          // Get questions for this test (no overlap between tests)
-          const startIndex = categoryOffset;
-          const endIndex = startIndex + categoryLimit;
-          const categoryTestQuestions = categoryQuestions.slice(startIndex, endIndex);
-
-          console.log(`  Selected questions: ${categoryTestQuestions.length}`);
-          console.log(`  Start index: ${startIndex}, End index: ${endIndex}`);
-
-          if (categoryTestQuestions.length === 0) {
-            console.warn(`  WARNING: No questions selected for category ${categorySlug}!`);
-            console.warn(`  This may cause the test to have fewer questions than expected.`);
-            console.warn(`  Reason: Not enough questions in this category for test number ${testNumber}`);
-          }
-
-          selectedQuestions.push(...categoryTestQuestions);
-        } else {
-          console.log(`  Skipping category ${categorySlug} - questionsPerCategory is 0`);
-        }
-      });
-
-      console.log(`Total selected questions: ${selectedQuestions.length}`);
-      console.log(`Expected questions: ${settings.total_questions}`);
-
-      if (selectedQuestions.length !== settings.total_questions) {
-        console.warn(`WARNING: Selected ${selectedQuestions.length} questions but expected ${settings.total_questions}`);
-      }
-
-      // Shuffle questions if enabled
-      if (shuffleQuestions) {
-        console.log('Shuffling questions...');
-        this.shuffleArray(selectedQuestions);
-      }
-
-      return selectedQuestions as Question[];
-    } catch (error) {
-      console.error('Error getting test questions:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Check if user can access a specific test
-   */
-  async canAccessTest(
-    supabase: SupabaseClient,
-    userId: string,
-    batchId: number,
-    testNumber: number,
-    allowRetest: boolean = false
-  ): Promise<{ canAccess: boolean; reason?: string }> {
-    try {
-      console.log('=== canAccessTest ===');
-      console.log('userId:', userId);
-      console.log('batchId:', batchId);
-      console.log('testNumber:', testNumber);
-      console.log('allowRetest:', allowRetest);
-
-      // Get user's plan
-      const { data: usageData } = await supabase
-        .from('user_usage')
-        .select('subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      console.log('Query Result - Usage Data:', usageData);
-
-      const subscription = (usageData as any)?.subscription;
-      const plan = subscription?.plan;
-      const userPlan = plan?.slug || 'free';
-      console.log('User Plan:', userPlan);
-
-      // Free plan users can only access Test 1
-      if (userPlan === 'free' && testNumber > 1) {
-        console.log('Access denied: Free plan user trying to access test > 1');
-        return {
-          canAccess: false,
-          reason: 'You have completed your free mock test. Upgrade your plan to unlock the remaining tests.',
-        };
-      }
-
-      // Check if user has already completed this test
-      const { data: existingResult } = await supabase
-        .from('test_results')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('batch_id', batchId)
-        .eq('test_number', testNumber)
-        .maybeSingle();
-
-      console.log('Query Result - Existing Test Result:', existingResult);
-
-      if (existingResult && !allowRetest) {
-        console.log('Access denied: Test already completed');
-        return {
-          canAccess: false,
-          reason: 'You have already completed this test.',
-        };
-      }
-
-      if (existingResult && allowRetest) {
-        console.log('Retest allowed: User is retaking the test');
-      }
-
-      console.log('Access granted');
-      return { canAccess: true };
-    } catch (error) {
-      console.error('Error checking test access:', error);
-      return { canAccess: false, reason: 'Error checking access' };
     }
   },
 
@@ -454,24 +298,8 @@ export const mockTestsService = {
         .select('id')
         .single();
 
-      console.log('Insert Data:', {
-        user_id: userId,
-        batch_id: batchId,
-        test_number: testNumber,
-      });
-
-      console.log('Query Result - Test Result:', testResult);
-      console.log('Query Error - Test Result:', testResultError);
-
       if (testResultError) {
         console.error("Supabase Insert Error:", testResultError);
-        console.error("Error details:", {
-          message: testResultError.message,
-          details: testResultError.details,
-          hint: testResultError.hint,
-          code: testResultError.code,
-        });
-
         return {
           success: false,
           error: testResultError.message,
@@ -495,12 +323,111 @@ export const mockTestsService = {
   },
 
   /**
-   * Shuffle array in place (Fisher-Yates algorithm)
+   * Check if user can access a specific test
+   * Uses database limits - NO hardcoded checks
    */
-  shuffleArray<T>(array: T[]): void {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+  async canAccessTest(
+    supabase: SupabaseClient,
+    userId: string,
+    batchId: number,
+    testNumber: number,
+    allowRetest: boolean = false
+  ): Promise<{ canAccess: boolean; reason?: string }> {
+    try {
+      console.log('=== canAccessTest ===');
+      console.log('userId:', userId);
+      console.log('batchId:', batchId);
+      console.log('testNumber:', testNumber);
+      console.log('allowRetest:', allowRetest);
+
+      // Check if test set exists
+      const { data: testSet, error: testSetError } = await supabase
+        .from('test_sets')
+        .select('id')
+        .eq('batch_id', batchId)
+        .eq('set_number', testNumber)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (testSetError || !testSet) {
+        console.log('Test set does not exist');
+        return {
+          canAccess: false,
+          reason: 'This test is not available yet.',
+        };
+      }
+
+      console.log('Test set found:', testSet.id);
+
+      // Get user's subscription info
+      const subscriptionInfo = await subscriptionService.getUserSubscription(supabase, userId);
+      const plan = subscriptionInfo.plan;
+      const summary = subscriptionInfo.summary;
+
+      // Get monthly limit from database
+      const monthlyLimit = plan?.monthly_mock_test_limit;
+      
+      // Get total available tests
+      const { count: totalAvailableTests } = await testSetsService.getTestSetCount(supabase, batchId);
+      
+      // Calculate available tests
+      let availableTests = totalAvailableTests || 0;
+      if (monthlyLimit !== null && monthlyLimit !== undefined && monthlyLimit > 0) {
+        availableTests = Math.min(availableTests, monthlyLimit);
+      } else {
+        // Free plan: use lifetime limit
+        const lifetimeLimit = plan?.lifetime_question_limit || summary?.lifetime_question_limit || 0;
+        const settings = await settingsService.getAllSettings(supabase);
+        const questionsPerTest = settings.total_questions;
+        const testsFromLifetimeLimit = lifetimeLimit > 0 ? Math.floor(lifetimeLimit / questionsPerTest) : 1;
+        availableTests = Math.min(availableTests, testsFromLifetimeLimit);
+      }
+
+      console.log('Available tests:', availableTests);
+
+      // Check if test is unlocked
+      if (testNumber > availableTests) {
+        console.log('Access denied: Test is locked');
+        return {
+          canAccess: false,
+          reason: 'This test is not available for your plan.',
+        };
+      }
+
+      // Check if user has remaining monthly quota
+      const hasRemainingQuota = !monthlyLimit || (summary && summary.tests_this_month < monthlyLimit);
+      if (!hasRemainingQuota) {
+        console.log('Access denied: Monthly limit reached');
+        return {
+          canAccess: false,
+          reason: 'Monthly mock test limit reached. Upgrade or wait for next month.',
+        };
+      }
+
+      // Check if user has already completed this test (and not retesting)
+      if (!allowRetest) {
+        const { data: existingResult } = await supabase
+          .from('test_results')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('batch_id', batchId)
+          .eq('test_number', testNumber)
+          .maybeSingle();
+
+        if (existingResult) {
+          console.log('Access denied: Test already completed');
+          return {
+            canAccess: false,
+            reason: 'You have already completed this test.',
+          };
+        }
+      }
+
+      console.log('Access granted');
+      return { canAccess: true };
+    } catch (error) {
+      console.error('Error checking test access:', error);
+      return { canAccess: false, reason: 'Error checking access' };
     }
   },
 };

@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
-import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock } from 'lucide-react';
 
 export default function MockTestPage() {
   const searchParams = useSearchParams();
@@ -22,6 +22,10 @@ export default function MockTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
   const [testResultId, setTestResultId] = useState<number | null>(null);
+  const [isResuming, setIsResuming] = useState(false);
+  const [bookmarks, setBookmarks] = useState<number[]>([]);
+  const [reviewFlags, setReviewFlags] = useState<number[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   useEffect(() => {
     if (!batchId || !testNumber) {
@@ -116,6 +120,11 @@ export default function MockTestPage() {
 
       setResult(data.result);
       setSubmitted(true);
+      
+      // Redirect to mock tests page after 2 seconds to show updated status
+      setTimeout(() => {
+        window.location.href = '/mock-tests';
+      }, 2000);
     } catch (err) {
       setError('Failed to submit test');
     }
@@ -228,7 +237,30 @@ export default function MockTestPage() {
     </main>;
   }
 
+  // Calculate progress
+  const answeredCount = Object.keys(answers).length;
+  const progressPercentage = (answeredCount / questions.length) * 100;
+
   return <main className="mx-auto max-w-3xl p-6">
+    {/* Progress Bar */}
+    <div className="mb-4 rounded-lg bg-slate-100 p-4">
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <span className="text-slate-600">Progress</span>
+        <span className="font-semibold">{answeredCount} / {questions.length} Answered</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+        <div 
+          className="h-full rounded-full bg-blue-600 transition-all"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+        <span>{bookmarks.length} Bookmarks</span>
+        <span>{reviewFlags.length} Review Flags</span>
+        {timeRemaining > 0 && <span>{Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')} remaining</span>}
+      </div>
+    </div>
+
     <div className="mb-5 flex justify-between">
       <Badge>{question.category?.name ?? 'Question'}</Badge>
       <span>{index + 1} / {questions.length}</span>
@@ -251,12 +283,45 @@ export default function MockTestPage() {
             </button>
           ))}
         </div>
+        
+        {/* Action Buttons */}
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (bookmarks.includes(question.id)) {
+                setBookmarks(bookmarks.filter(id => id !== question.id));
+              } else {
+                setBookmarks([...bookmarks, question.id]);
+              }
+            }}
+          >
+            <Bookmark className={`mr-1 h-4 w-4 ${bookmarks.includes(question.id) ? 'fill-current text-yellow-600' : ''}`} />
+            {bookmarks.includes(question.id) ? 'Bookmarked' : 'Bookmark'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (reviewFlags.includes(question.id)) {
+                setReviewFlags(reviewFlags.filter(id => id !== question.id));
+              } else {
+                setReviewFlags([...reviewFlags, question.id]);
+              }
+            }}
+          >
+            <Flag className={`mr-1 h-4 w-4 ${reviewFlags.includes(question.id) ? 'fill-current text-red-600' : ''}`} />
+            {reviewFlags.includes(question.id) ? 'Flagged' : 'Flag for Review'}
+          </Button>
+        </div>
+
         <div className="mt-6 flex justify-between">
           <Button variant="outline" disabled={index === 0} onClick={() => setIndex((current) => current - 1)}>
             <ChevronLeft /> Previous
           </Button>
           {index === questions.length - 1 ? (
-            <Button onClick={handleSubmit}>Submit</Button>
+            <Button onClick={handleSubmit}>Submit Test</Button>
           ) : (
             <Button onClick={() => setIndex((current) => current + 1)}>
               Next <ChevronRight />

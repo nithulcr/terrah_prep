@@ -34,7 +34,7 @@ export async function POST(
     }
 
     // Get test set details
-    const testSet = await testSetsService.getTestSet(supabase, testSetId);
+    const testSet = await testSetsService.getTestSetById(supabase, testSetId);
     if (!testSet) {
       return NextResponse.json({ error: 'Test set not found' }, { status: 404 });
     }
@@ -68,7 +68,7 @@ export async function POST(
     }
 
     // Get questions for this test set
-    const testSetWithQuestions = await testSetsService.getTestSet(supabase, testSetId);
+    const testSetWithQuestions = await testSetsService.getTestSetById(supabase, testSetId);
     
     if (!testSetWithQuestions || !testSetWithQuestions.questions || testSetWithQuestions.questions.length === 0) {
       return NextResponse.json({ error: 'No questions found for this test set' }, { status: 404 });

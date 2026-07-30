@@ -21,20 +21,33 @@ export default function AdminTestSetsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('ADMIN TEST SETS PAGE QUERY: batches select - BEFORE');
       const { data: batchesData } = await supabase
         .from('batches')
         .select('*')
         .order('batch_number');
+
+      console.log('ADMIN TEST SETS PAGE QUERY: batches select - AFTER', {
+        rowCount: batchesData?.length ?? 0,
+      });
 
       if (batchesData) {
         setBatches(batchesData);
         
         const counts: Record<number, number> = {};
         for (const batch of batchesData) {
-          const { count } = await supabase
+          console.log('ADMIN TEST SETS PAGE QUERY: test_sets count - BEFORE', {
+            batchId: batch.id,
+          });
+          const { count, error } = await supabase
             .from('test_sets')
             .select('*', { count: 'exact', head: true })
             .eq('batch_id', batch.id);
+          console.log('ADMIN TEST SETS PAGE QUERY: test_sets count - AFTER', {
+            batchId: batch.id,
+            count,
+            error,
+          });
           counts[batch.id] = count || 0;
         }
         setTestSetCounts(counts);
@@ -74,9 +87,14 @@ export default function AdminTestSetsPage() {
       }
 
       setMessage({ type: 'success', text: data.message });
+      console.log('ADMIN TEST SETS PAGE API: generate response', data);
       await loadData();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to generate test sets' });
+      console.error('ADMIN TEST SETS PAGE API: generate failed', error);
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to generate test sets',
+      });
     } finally {
       setGenerating(null);
     }

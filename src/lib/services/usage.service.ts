@@ -1,6 +1,7 @@
 // ============================================
-// TERRAH PREP - USAGE SERVICE
+// TERRAH PREP - USAGE SERVICE (DATABASE-DRIVEN)
 // ============================================
+// ALL limits come from database - NO hardcoded plan checks
 
 import { settingsService } from '@/lib/services/settings.service';
 import { UserUsage, UsageSummary, Plan } from '@/types';
@@ -40,7 +41,7 @@ export interface PlanFeatureFlags {
 export const usageService = {
   /**
    * Get user usage summary with plan details
-   * Uses direct queries instead of RPC to avoid database function dependency
+   * Returns data from database - NO hardcoded values
    */
   async getUserUsageSummary(supabase: SupabaseClient, userId: string): Promise<{ usage: UsageSummary | null; error: string | null }> {
     try {
@@ -69,7 +70,7 @@ export const usageService = {
       const subscription = (usageData as any).subscription;
       const plan = subscription?.plan as Plan | null;
 
-      // If no active subscription, return basic usage with settings from database
+      // If no active subscription, return free plan usage
       if (!plan) {
         const settings = await settingsService.getAllSettings(supabase);
         return {
@@ -150,6 +151,50 @@ export const usageService = {
   },
 
   /**
+   * Reset monthly usage if it's a new month
+   * Called on login to reset monthly counters
+   */
+  async resetMonthlyUsageIfNeeded(supabase: SupabaseClient, userId: string): Promise<void> {
+    try {
+      console.log('=== resetMonthlyUsageIfNeeded ===');
+      console.log('userId:', userId);
+      
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      
+      const { data: usageData } = await supabase
+        .from('user_usage')
+        .select('last_monthly_reset')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      console.log('Query Result - Usage Data:', usageData);
+
+      if (!usageData) {
+        return;
+      }
+
+      const lastReset = (usageData as any).last_monthly_reset;
+      
+      if (lastReset !== currentMonth) {
+        console.log('Resetting monthly counters for user:', userId);
+        // Reset monthly counters
+        const { error } = await supabase
+          .from('user_usage')
+          .update({
+            tests_this_month: 0,
+            last_monthly_reset: currentMonth,
+          })
+          .eq('user_id', userId);
+
+        console.log('Query Error - Reset Monthly Usage:', error);
+      }
+    } catch (error) {
+      console.error('Failed to reset monthly usage:', error);
+      // Don't throw - this is a non-critical operation
+    }
+  },
+
+  /**
    * Get user usage with full plan details
    */
   async getUserUsageWithPlan(supabase: SupabaseClient, userId: string): Promise<{ usage: UserUsage | null; plan: Plan | null; error: string | null }> {
@@ -187,15 +232,24 @@ export const usageService = {
 
   /**
    * Check if user can access questions based on their plan and usage
+   * Uses database limits - NO hardcoded plan checks
    */
   async canAccessQuestions(supabase: SupabaseClient, userId: string): Promise<UsageCheckResult> {
     try {
       console.log('=== canAccessQuestions ===');
       console.log('userId:', userId);
 
-      const { usage, error } = await this.getUserUsageSummary(supabase, userId);
+      // Get user usage with subscription and plan
+      const { data: usageData, error: usageError } = await supabase
+        .from('user_usage')
+        .select('*, subscription:subscriptions(plan:plans(*))')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error || !usage) {
+      console.log('Query Result - Usage Data:', usageData);
+      console.log('Query Error - Usage:', usageError);
+
+      if (usageError || !usageData) {
         return {
           canAccess: false,
           reason: 'Unable to verify subscription status',
@@ -204,66 +258,126 @@ export const usageService = {
         };
       }
 
-      // Get plan details
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('slug', usage.plan_slug)
-        .single();
+      const usage = usageData as UserUsage;
+      const subscription = (usageData as any).subscription;
+      const plan = subscription?.plan as Plan | null;
 
-      console.log('Query Result - Plan:', planData);
-      console.log('Query Error - Plan:', planError);
+      // If no active subscription, user is on free plan
+      if (!plan) {
+        const settings = await settingsService.getAllSettings(supabase);
+        const freeLimit = settings.free_question_limit;
+        
+        if (usage.free_questions_used >= freeLimit) {
+          return {
+            canAccess: false,
+            reason: 'Free question limit reached. Upgrade to continue.',
+            redirectTo: '/pricing',
+            usage: {
+              plan_slug: 'free',
+              daily_question_limit: 0,
+              monthly_mock_test_limit: 0,
+              lifetime_question_limit: freeLimit,
+              questions_today: usage.questions_today,
+              tests_this_month: usage.tests_this_month,
+              free_questions_used: usage.free_questions_used,
+              subscription_expires_at: null,
+            },
+            plan: null,
+          };
+        }
 
-      if (planError || !planData) {
         return {
-          canAccess: false,
-          reason: 'Plan not found',
-          usage,
+          canAccess: true,
+          usage: {
+            plan_slug: 'free',
+            daily_question_limit: 0,
+            monthly_mock_test_limit: 0,
+            lifetime_question_limit: freeLimit,
+            questions_today: usage.questions_today,
+            tests_this_month: usage.tests_this_month,
+            free_questions_used: usage.free_questions_used,
+            subscription_expires_at: null,
+          },
           plan: null,
         };
       }
 
-      const selectedPlan = planData as Plan;
-
-      // Check lifetime question limit (for FREE plan)
-      // Use app_settings.free_question_limit for FREE plan, otherwise use plan's limit
-      let effectiveLifetimeLimit = selectedPlan.lifetime_question_limit;
-      
-      // For FREE plan, use the free_question_limit from app_settings
-      if (selectedPlan.slug === 'free') {
-        const settings = await settingsService.getAllSettings(supabase);
-        effectiveLifetimeLimit = settings.free_question_limit;
-        console.log('Using FREE plan limit from settings:', effectiveLifetimeLimit);
+      // Check if subscription is expired
+      if (subscription.expires_at && new Date(subscription.expires_at) < new Date()) {
+        return {
+          canAccess: false,
+          reason: 'Subscription expired. Please renew your subscription.',
+          redirectTo: '/pricing',
+          usage: {
+            plan_slug: plan.slug,
+            daily_question_limit: plan.daily_question_limit,
+            monthly_mock_test_limit: plan.monthly_mock_test_limit,
+            lifetime_question_limit: plan.lifetime_question_limit,
+            questions_today: usage.questions_today,
+            tests_this_month: usage.tests_this_month,
+            free_questions_used: usage.free_questions_used,
+            subscription_expires_at: subscription.expires_at,
+          },
+          plan,
+        };
       }
-      
-      if (effectiveLifetimeLimit !== null && effectiveLifetimeLimit !== undefined) {
-        if (usage.free_questions_used >= effectiveLifetimeLimit) {
+
+      // Check lifetime question limit
+      if (plan.lifetime_question_limit !== null && plan.lifetime_question_limit !== undefined) {
+        if (usage.free_questions_used >= plan.lifetime_question_limit) {
           return {
             canAccess: false,
-            reason: `You have completed your free practice questions. Upgrade to continue learning.`,
+            reason: `Lifetime question limit reached (${plan.lifetime_question_limit}/${plan.lifetime_question_limit}). Upgrade to continue.`,
             redirectTo: '/pricing',
-            usage,
-            plan: selectedPlan,
+            usage: {
+              plan_slug: plan.slug,
+              daily_question_limit: plan.daily_question_limit,
+              monthly_mock_test_limit: plan.monthly_mock_test_limit,
+              lifetime_question_limit: plan.lifetime_question_limit,
+              questions_today: usage.questions_today,
+              tests_this_month: usage.tests_this_month,
+              free_questions_used: usage.free_questions_used,
+              subscription_expires_at: subscription.expires_at,
+            },
+            plan,
           };
         }
       }
 
-      // Check daily question limit (for paid plans)
-      if (selectedPlan.daily_question_limit !== null && selectedPlan.daily_question_limit !== undefined) {
-        if (usage.questions_today >= selectedPlan.daily_question_limit) {
+      // Check daily question limit
+      if (plan.daily_question_limit !== null && plan.daily_question_limit !== undefined) {
+        if (usage.questions_today >= plan.daily_question_limit) {
           return {
             canAccess: false,
-            reason: `Daily Question Limit Reached. Come back tomorrow.`,
-            usage,
-            plan: selectedPlan,
+            reason: `Daily Question Limit Reached (${plan.daily_question_limit}/${plan.daily_question_limit}). Come back tomorrow.`,
+            usage: {
+              plan_slug: plan.slug,
+              daily_question_limit: plan.daily_question_limit,
+              monthly_mock_test_limit: plan.monthly_mock_test_limit,
+              lifetime_question_limit: plan.lifetime_question_limit,
+              questions_today: usage.questions_today,
+              tests_this_month: usage.tests_this_month,
+              free_questions_used: usage.free_questions_used,
+              subscription_expires_at: subscription.expires_at,
+            },
+            plan,
           };
         }
       }
 
       return {
         canAccess: true,
-        usage,
-        plan: selectedPlan,
+        usage: {
+          plan_slug: plan.slug,
+          daily_question_limit: plan.daily_question_limit,
+          monthly_mock_test_limit: plan.monthly_mock_test_limit,
+          lifetime_question_limit: plan.lifetime_question_limit,
+          questions_today: usage.questions_today,
+          tests_this_month: usage.tests_this_month,
+          free_questions_used: usage.free_questions_used,
+          subscription_expires_at: subscription.expires_at,
+        },
+        plan,
       };
     } catch (error) {
       console.error('Error checking access:', error);
@@ -278,15 +392,24 @@ export const usageService = {
 
   /**
    * Check if user can start a mock test
+   * Uses database limits - NO hardcoded plan checks
    */
   async canStartMockTest(supabase: SupabaseClient, userId: string): Promise<UsageCheckResult> {
     try {
       console.log('=== canStartMockTest ===');
       console.log('userId:', userId);
 
-      const { usage, error } = await this.getUserUsageSummary(supabase, userId);
+      // Get user usage with subscription and plan
+      const { data: usageData, error: usageError } = await supabase
+        .from('user_usage')
+        .select('*, subscription:subscriptions(plan:plans(*))')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error || !usage) {
+      console.log('Query Result - Usage Data:', usageData);
+      console.log('Query Error - Usage:', usageError);
+
+      if (usageError || !usageData) {
         return {
           canAccess: false,
           reason: 'Unable to verify subscription status',
@@ -295,44 +418,88 @@ export const usageService = {
         };
       }
 
-      // Get plan details
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('slug', usage.plan_slug)
-        .single();
+      const usage = usageData as UserUsage;
+      const subscription = (usageData as any).subscription;
+      const plan = subscription?.plan as Plan | null;
 
-      console.log('Query Result - Plan:', planData);
-      console.log('Query Error - Plan:', planError);
-
-      if (planError || !planData) {
+      // If no active subscription, check free plan limits
+      if (!plan) {
+        const settings = await settingsService.getAllSettings(supabase);
+        const freeLimit = settings.free_question_limit;
+        
+        // Free users can only take Test 1 (mock test limit = 0 means only test 1)
+        // This is handled by the mock test availability logic
         return {
-          canAccess: false,
-          reason: 'Plan not found',
-          usage,
+          canAccess: true,
+          usage: {
+            plan_slug: 'free',
+            daily_question_limit: 0,
+            monthly_mock_test_limit: 0,
+            lifetime_question_limit: freeLimit,
+            questions_today: usage.questions_today,
+            tests_this_month: usage.tests_this_month,
+            free_questions_used: usage.free_questions_used,
+            subscription_expires_at: null,
+          },
           plan: null,
         };
       }
 
-      const selectedPlan = planData as Plan;
+      // Check if subscription is expired
+      if (subscription.expires_at && new Date(subscription.expires_at) < new Date()) {
+        return {
+          canAccess: false,
+          reason: 'Subscription expired. Please renew your subscription.',
+          redirectTo: '/pricing',
+          usage: {
+            plan_slug: plan.slug,
+            daily_question_limit: plan.daily_question_limit,
+            monthly_mock_test_limit: plan.monthly_mock_test_limit,
+            lifetime_question_limit: plan.lifetime_question_limit,
+            questions_today: usage.questions_today,
+            tests_this_month: usage.tests_this_month,
+            free_questions_used: usage.free_questions_used,
+            subscription_expires_at: subscription.expires_at,
+          },
+          plan,
+        };
+      }
 
-      // Check monthly mock test limit
-      if (selectedPlan.monthly_mock_test_limit !== null && selectedPlan.monthly_mock_test_limit !== undefined) {
-        if (usage.tests_this_month >= selectedPlan.monthly_mock_test_limit) {
+      // Check monthly mock test limit from database
+      if (plan.monthly_mock_test_limit !== null && plan.monthly_mock_test_limit !== undefined) {
+        if (usage.tests_this_month >= plan.monthly_mock_test_limit) {
           return {
             canAccess: false,
-            reason: `Monthly Mock Test Limit Reached. Renew or upgrade your subscription.`,
+            reason: `Monthly Mock Test Limit Reached (${plan.monthly_mock_test_limit}/${plan.monthly_mock_test_limit}). Upgrade or wait for next month.`,
             redirectTo: '/pricing',
-            usage,
-            plan: selectedPlan,
+            usage: {
+              plan_slug: plan.slug,
+              daily_question_limit: plan.daily_question_limit,
+              monthly_mock_test_limit: plan.monthly_mock_test_limit,
+              lifetime_question_limit: plan.lifetime_question_limit,
+              questions_today: usage.questions_today,
+              tests_this_month: usage.tests_this_month,
+              free_questions_used: usage.free_questions_used,
+              subscription_expires_at: subscription.expires_at,
+            },
+            plan,
           };
         }
       }
 
       return {
         canAccess: true,
-        usage,
-        plan: selectedPlan,
+        usage: {
+          plan_slug: plan.slug,
+          daily_question_limit: plan.daily_question_limit,
+          monthly_mock_test_limit: plan.monthly_mock_test_limit,
+          lifetime_question_limit: plan.lifetime_question_limit,
+          questions_today: usage.questions_today,
+          tests_this_month: usage.tests_this_month,
+          free_questions_used: usage.free_questions_used,
+          subscription_expires_at: subscription.expires_at,
+        },
+        plan,
       };
     } catch (error) {
       console.error('Error checking access:', error);
@@ -347,6 +514,7 @@ export const usageService = {
 
   /**
    * Increment usage counters after test completion
+   * Tracks questions and tests from database
    */
   async incrementUsage(supabase: SupabaseClient, userId: string, data: IncrementUsageData): Promise<{ success: boolean; error: string | null }> {
     try {
@@ -433,6 +601,7 @@ export const usageService = {
           tests_this_month: 0,
           free_questions_used: 0,
           last_daily_reset: new Date().toISOString().split('T')[0],
+          last_monthly_reset: new Date().toISOString().slice(0, 7),
         })
         .eq('user_id', userId);
 

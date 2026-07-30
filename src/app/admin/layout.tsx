@@ -70,6 +70,8 @@ export default function AdminLayout({
     { href: '/admin/questions', label: 'Questions', icon: BookOpen },
     { href: '/admin/categories', label: 'Categories', icon: FolderTree },
     { href: '/admin/import', label: 'Import', icon: Upload },
+    { href: '/admin/test-sets', label: 'Test Sets', icon: Upload },
+
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/batches', label: 'Batches', icon: ClipboardList },
     { href: '/admin/settings', label: 'Settings', icon: Settings },

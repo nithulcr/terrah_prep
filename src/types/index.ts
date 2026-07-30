@@ -227,8 +227,12 @@ export interface DynamicTest {
   testNumber: number;
   name: string;
   totalQuestions: number;
-  status: 'available' | 'started' | 'completed' | 'locked';
+  status: 'available' | 'in_progress' | 'completed' | 'locked';
   hasAttempted: boolean;
+  completedAt?: string;
+  score?: number;
+  percentage?: number;
+  attemptNumber?: number;
 }
 
 export interface CategoryQuestionCount {

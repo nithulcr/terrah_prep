@@ -4,18 +4,18 @@
 begin;
 
 CREATE TABLE IF NOT EXISTS public.app_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
+  setting_key TEXT PRIMARY KEY,
+  setting_value TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS app_settings_key_idx ON public.app_settings(key);
+CREATE INDEX IF NOT EXISTS app_settings_key_idx ON public.app_settings(setting_key);
 
 -- Insert default settings
-INSERT INTO public.app_settings (key, value, description) VALUES
+INSERT INTO public.app_settings (setting_key, setting_value, description) VALUES
   ('total_questions', '100', 'Total number of questions in a mock test'),
   ('english_questions', '20', 'Number of English questions per test'),
   ('science_questions', '20', 'Number of Science questions per test'),
@@ -27,8 +27,8 @@ INSERT INTO public.app_settings (key, value, description) VALUES
   ('test_duration_minutes', '90', 'Duration of mock test in minutes'),
   ('shuffle_questions', 'true', 'Shuffle questions randomly'),
   ('shuffle_options', 'true', 'Shuffle answer options randomly')
-ON CONFLICT (key) DO UPDATE SET
-  value = EXCLUDED.value,
+ON CONFLICT (setting_key) DO UPDATE SET
+  setting_value = EXCLUDED.setting_value,
   description = EXCLUDED.description,
   updated_at = now();
 
@@ -54,26 +54,3 @@ GRANT SELECT ON public.app_settings TO authenticated;
 GRANT ALL ON public.app_settings TO service_role;
 
 commit;
-
-</parameter>
-<task_progress>
-- [x] Check app_settings table schema
-- [x] Create Settings Service
-- [x] Implement caching
-- [x] Create Settings Context
-- [x] Add SettingsProvider to app
-- [x] Fix middleware deprecation warning (renamed to proxy.ts)
-- [x] Fix proxy function export
-- [x] Restart dev server on port 3000
-- [x] Create app_settings table migration
-- [ ] Remove hardcoded values
-- [ ] Update mock test generation
-- [ ] Update subscription limits
-- [ ] Update timer
-- [ ] Update negative marking
-- [ ] Update shuffling
-- [ ] Create admin settings page
-- [ ] Implement auto refresh
-- [ ] Final code quality audit
-</task_progress>
-</write_to_file>

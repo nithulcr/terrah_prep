@@ -85,17 +85,25 @@ export async function POST(request: Request) {
     }
 
     // Get questions using questionIds from request body
+    // This is the ONLY source - questions that were actually sent to the user
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
       .select('*')
       .in('id', questionIds);
 
     if (questionsError || !questions || questions.length === 0) {
+      console.error('SUBMIT API - No questions found for questionIds:', questionIds);
       return NextResponse.json(
         { error: 'No questions found for this test' },
         { status: 404 }
       );
     }
+
+    console.log('SUBMIT API - Question Count:', {
+      questionIdsCount: questionIds.length,
+      questionsFetched: questions.length,
+      questionIds: questionIds,
+    });
 
     // Calculate results
     let correctAnswers = 0;
@@ -129,7 +137,18 @@ export async function POST(request: Request) {
     }
 
     const finalMarks = earnedMarks - negativeMarks;
-    const totalQuestions = questions.length;
+    const totalQuestions = questions.length; // Use actual questions fetched, not questionIds count
+    
+    console.log('SUBMIT API - Results Calculated:', {
+      totalQuestions,
+      correctAnswers,
+      wrongAnswers,
+      skippedAnswers,
+      earnedMarks,
+      negativeMarks,
+      finalMarks,
+      percentage: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
+    });
     const percentage =
       totalQuestions > 0
         ? Math.round((correctAnswers / totalQuestions) * 100)

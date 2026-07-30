@@ -80,10 +80,10 @@ CREATE POLICY user_test_attempts_update_own ON public.user_test_attempts
   FOR UPDATE USING (user_id = auth.uid() OR public.is_admin()) WITH CHECK (user_id = auth.uid() OR public.is_admin());
 
 -- Grant permissions
-GRANT SELECT ON public.test_sets TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.test_sets TO authenticated;
 GRANT ALL ON public.test_sets TO service_role;
 
-GRANT SELECT ON public.test_set_questions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.test_set_questions TO authenticated;
 GRANT ALL ON public.test_set_questions TO service_role;
 
 GRANT SELECT, INSERT, UPDATE ON public.user_test_attempts TO authenticated;

@@ -79,14 +79,37 @@ class SettingsServiceClass {
   async fetchSettings(supabase: SupabaseClient): Promise<AppSettings> {
     try {
       console.log('=== fetchSettings ===');
+      console.log('SETTINGS QUERY: app_settings select setting_key/setting_value - BEFORE');
       
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('app_settings')
         .select('setting_key, setting_value, description')
         .order('setting_key');
 
-      console.log('Query Result - Settings:', data);
-      console.log('Query Error - Settings:', error);
+      console.log('SETTINGS QUERY: app_settings select setting_key/setting_value - AFTER', {
+        rowCount: data?.length ?? 0,
+        error,
+      });
+
+      if (error && error.message?.includes('setting_key')) {
+        console.warn('SETTINGS QUERY: Falling back to legacy key/value app_settings columns');
+        const legacyResult = await supabase
+          .from('app_settings')
+          .select('key, value, description')
+          .order('key');
+
+        console.log('SETTINGS QUERY: app_settings select key/value - AFTER', {
+          rowCount: legacyResult.data?.length ?? 0,
+          error: legacyResult.error,
+        });
+
+        data = legacyResult.data?.map((row: any) => ({
+          setting_key: row.key,
+          setting_value: row.value,
+          description: row.description,
+        })) ?? null;
+        error = legacyResult.error;
+      }
 
       if (error) {
         console.error('Error fetching settings:', error);

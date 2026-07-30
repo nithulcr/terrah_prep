@@ -29,13 +29,28 @@ export async function GET(request: Request) {
     );
 
     // Get current user
+    console.log('MOCK TESTS API QUERY: auth.getUser - BEFORE');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    console.log('MOCK TESTS API QUERY: auth.getUser - AFTER', {
+      hasUser: !!user,
+      userId: user?.id,
+      error: authError,
+    });
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get available tests and stats
+    console.log('MOCK TESTS API: getAvailableTests - BEFORE', {
+      batchId: Number(batchId),
+      userId: user.id,
+    });
     const result = await mockTestsService.getAvailableTests(supabase, Number(batchId), user.id);
+    console.log('MOCK TESTS API: getAvailableTests - AFTER', {
+      testsCount: result.tests.length,
+      stats: result.stats,
+      categoryCounts: result.categoryCounts.length,
+    });
 
     return NextResponse.json({
       success: true,
