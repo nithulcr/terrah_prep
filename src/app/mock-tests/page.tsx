@@ -71,6 +71,7 @@ export default function MockTestsPage() {
     totalQuestions: 0,
     questionsPerTest: 0,
     totalAvailableTests: 0,
+    availableTests: 0,
     completedTests: 0,
     remainingTests: 0,
     currentPlan: 'free',

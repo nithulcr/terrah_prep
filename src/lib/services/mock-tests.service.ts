@@ -180,15 +180,11 @@ export const mockTestsService = {
       console.log('Has remaining quota:', hasRemainingQuota, 'Tests this month:', summary?.tests_this_month, 'Limit:', monthlyLimit);
 
       // Generate test list with progress tracking
-      // Only return tests up to availableTests (hides locked tests from free users)
+      // Show ALL tests (up to 30), but mark as locked if beyond user's limit
       const tests: DynamicTest[] = [];
+      const maxTestsToShow = Math.min(totalAvailableTests || 0, 30); // Show max 30 tests
       
-      for (let i = 1; i <= (totalAvailableTests || 0); i++) {
-        // Skip tests beyond available limit (hides locked tests)
-        if (i > availableTests) {
-          break;
-        }
-
+      for (let i = 1; i <= maxTestsToShow; i++) {
         const completedResult = completedTestMap.get(i);
         const isCompleted = !!completedResult;
 
@@ -196,15 +192,21 @@ export const mockTestsService = {
         const testProgress = await testProgressService.getTestProgress(supabase, userId, batchId, i);
         const isInProgress = !isCompleted && testProgress && testProgress.status === 'in_progress';
 
-        let status: 'available' | 'in_progress' | 'completed' | 'locked' = 'available';
-        let buttonText = 'Start';
+        // Determine test status
+        // For paid plans: unlock sequentially (test 1, then test 2, etc.)
+        // For free plan: only test 1 is available
+        let status: 'available' | 'in_progress' | 'completed' | 'locked';
         
         if (isCompleted) {
           status = 'completed';
-          buttonText = 'Completed';
         } else if (isInProgress) {
           status = 'in_progress';
-          buttonText = 'Resume';
+        } else if (i <= availableTests) {
+          // Test is within user's available limit
+          status = 'available';
+        } else {
+          // Test is beyond user's limit
+          status = 'locked';
         }
 
         tests.push({
