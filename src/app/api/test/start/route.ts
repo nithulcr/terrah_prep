@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       totalQuestions: testSet.total_questions,
     });
 
-    // Create test result
+    // Create test result with minimal fields first
     console.log('TEST START API - Creating test result...');
     const { data: testResult, error: testResultError } = await supabase
       .from('test_results')
@@ -127,17 +127,18 @@ export async function POST(request: Request) {
         user_id: user.id,
         batch_id: Number(batchId),
         test_number: testSet.set_number,
-        score: 0,
-        total_questions: 0,
-        correct_answers: 0,
-        wrong_answers: 0,
-        skipped_answers: 0,
-        time_taken_seconds: 0,
-        negative_marks: 0,
-        percentage: 0,
       })
       .select('id')
       .single();
+    
+    console.log('TEST START API - Minimal insert response:', {
+      testResult,
+      testResultError,
+      errorCode: testResultError?.code,
+      errorMessage: testResultError?.message,
+      errorDetails: testResultError?.details,
+      errorHint: testResultError?.hint,
+    });
 
     console.log('TEST START API - Test result insert response:', {
       testResult,

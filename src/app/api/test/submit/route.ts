@@ -154,7 +154,7 @@ export async function POST(request: Request) {
         ? Math.round((correctAnswers / totalQuestions) * 100)
         : 0;
 
-    // Update test result with scores
+    // Update test result with scores and mark as completed
     const { data: updatedTestResult, error: updateError } = await supabase
       .from('test_results')
       .update({
@@ -166,6 +166,7 @@ export async function POST(request: Request) {
         time_taken_seconds: timeTakenSeconds || 0,
         negative_marks: negativeMarks,
         percentage,
+        completed_at: new Date().toISOString(), // Mark as completed
       })
       .eq('id', testResultId)
       .select()

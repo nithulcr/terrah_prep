@@ -218,6 +218,7 @@ export interface TestSetStats {
   totalQuestions: number;
   questionsPerTest: number;
   totalAvailableTests: number;
+  availableTests: number;
   completedTests: number;
   remainingTests: number;
   currentPlan: string;

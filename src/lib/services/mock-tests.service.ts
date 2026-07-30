@@ -71,6 +71,7 @@ export const mockTestsService = {
             totalQuestions: 0,
             questionsPerTest: questionsPerTest,
             totalAvailableTests: 0,
+            availableTests: 0,
             completedTests: 0,
             remainingTests: 0,
             currentPlan: 'free',
@@ -167,12 +168,9 @@ export const mockTestsService = {
         availableTests = Math.min(availableTests, monthlyLimit);
         console.log('Paid plan - Available tests:', availableTests, '(MIN of', totalAvailableTests, 'and', monthlyLimit, ')');
       } else {
-        // Free plan: use lifetime_question_limit
-        // Calculate how many tests the user can take based on lifetime limit
-        const lifetimeLimit = plan?.lifetime_question_limit || summary?.lifetime_question_limit || 0;
-        const testsFromLifetimeLimit = lifetimeLimit > 0 ? Math.floor(lifetimeLimit / questionsPerTest) : 1;
-        availableTests = Math.min(availableTests, testsFromLifetimeLimit);
-        console.log('Free plan - Available tests:', availableTests, '(MIN of', totalAvailableTests, 'and', testsFromLifetimeLimit, 'from lifetime limit)');
+        // Free plan: only 1 test total
+        availableTests = Math.min(availableTests, 1);
+        console.log('Free plan - Available tests:', availableTests, '(MIN of', totalAvailableTests, 'and 1)');
       }
 
       console.log('Final available tests:', availableTests);
@@ -182,19 +180,24 @@ export const mockTestsService = {
       console.log('Has remaining quota:', hasRemainingQuota, 'Tests this month:', summary?.tests_this_month, 'Limit:', monthlyLimit);
 
       // Generate test list with progress tracking
+      // Only return tests up to availableTests (hides locked tests from free users)
       const tests: DynamicTest[] = [];
       
       for (let i = 1; i <= (totalAvailableTests || 0); i++) {
+        // Skip tests beyond available limit (hides locked tests)
+        if (i > availableTests) {
+          break;
+        }
+
         const completedResult = completedTestMap.get(i);
         const isCompleted = !!completedResult;
-        const isUnlocked = i <= availableTests;
 
         // Get test progress for in_progress detection
         const testProgress = await testProgressService.getTestProgress(supabase, userId, batchId, i);
         const isInProgress = !isCompleted && testProgress && testProgress.status === 'in_progress';
 
-        let status: 'available' | 'in_progress' | 'completed' | 'locked' = 'locked';
-        let buttonText = 'Locked';
+        let status: 'available' | 'in_progress' | 'completed' | 'locked' = 'available';
+        let buttonText = 'Start';
         
         if (isCompleted) {
           status = 'completed';
@@ -202,17 +205,6 @@ export const mockTestsService = {
         } else if (isInProgress) {
           status = 'in_progress';
           buttonText = 'Resume';
-        } else if (isUnlocked) {
-          if (hasRemainingQuota) {
-            status = 'available';
-            buttonText = 'Start';
-          } else {
-            status = 'locked';
-            buttonText = 'Monthly Limit Reached';
-          }
-        } else {
-          status = 'locked';
-          buttonText = 'Locked';
         }
 
         tests.push({
@@ -234,6 +226,7 @@ export const mockTestsService = {
         totalQuestions: questions.length,
         questionsPerTest: questionsPerTest,
         totalAvailableTests: totalAvailableTests || 0,
+        availableTests, // Add this so frontend knows how many tests to show
         completedTests,
         remainingTests,
         currentPlan,
@@ -255,6 +248,7 @@ export const mockTestsService = {
           totalQuestions: 0,
           questionsPerTest: 0,
           totalAvailableTests: 0,
+          availableTests: 0,
           completedTests: 0,
           remainingTests: 0,
           currentPlan: 'free',
