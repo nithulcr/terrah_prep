@@ -5,7 +5,7 @@
 // All question operations are handled by testSetsService
 // ALL unlock logic is database-driven - NO hardcoded rules
 
-import { settingsService } from '@/lib/services/settings.service';
+import { TEST_CONFIG } from '@/config/testConfig';
 import { testSetsService } from '@/lib/services/test-sets.service';
 import { subscriptionService } from '@/lib/services/subscription.service';
 import { testProgressService } from '@/lib/services/test-progress.service';
@@ -39,10 +39,9 @@ export const mockTestsService = {
       console.log('userId:', userId);
       console.log('batchId:', batchId);
 
-      // Get settings
-      const settings = await settingsService.getAllSettings(supabase);
-      const questionsPerTest = settings.total_questions;
-      console.log('Questions per test (from settings):', questionsPerTest);
+      // Get questions per test from config
+      const questionsPerTest = TEST_CONFIG.TOTAL_QUESTIONS;
+      console.log('Questions per test (from config):', questionsPerTest);
 
       // Get all active questions for this batch
       console.log('MOCK TESTS QUERY: questions select active category counts - BEFORE', {
@@ -237,7 +236,7 @@ export const mockTestsService = {
       };
 
       console.log('Returning stats:', stats);
-      console.log('Returning tests count:', tests.length);
+        console.log('Returning tests count:', tests.length);
 
       return {
         tests,
@@ -375,8 +374,7 @@ export const mockTestsService = {
       } else {
         // Free plan: use lifetime limit
         const lifetimeLimit = plan?.lifetime_question_limit || summary?.lifetime_question_limit || 0;
-        const settings = await settingsService.getAllSettings(supabase);
-        const questionsPerTest = settings.total_questions;
+        const questionsPerTest = TEST_CONFIG.TOTAL_QUESTIONS;
         const testsFromLifetimeLimit = lifetimeLimit > 0 ? Math.floor(lifetimeLimit / questionsPerTest) : 1;
         availableTests = Math.min(availableTests, testsFromLifetimeLimit);
       }

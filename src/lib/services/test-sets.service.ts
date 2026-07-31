@@ -6,7 +6,7 @@
 // No runtime question generation
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { settingsService } from '@/lib/services/settings.service';
+import { TEST_CONFIG } from '@/config/testConfig';
 import { Batch, Question } from '@/types';
 
 export interface TestSet {
@@ -71,15 +71,10 @@ export const testSetsService = {
       console.log('========================================');
       console.log('batchId:', batchId);
 
-      // Get settings
-      await settingsService.refreshSettings(supabase);
-
-      const settings = await settingsService.getAllSettings(supabase);
-
-      const questionsPerTest = Number(settings.total_questions);
+      // Get questions per test from config
+      const questionsPerTest = TEST_CONFIG.TOTAL_QUESTIONS;
 
       console.log({
-        totalQuestionsSetting: settings.total_questions,
         questionsPerTest
       });
 
@@ -647,8 +642,7 @@ export const testSetsService = {
     userId: string
   ) {
     try {
-      const settings = await settingsService.getAllSettings(supabase);
-      const questionsPerTest = Number(settings.total_questions);
+      const questionsPerTest = TEST_CONFIG.TOTAL_QUESTIONS;
 
       console.log('TEST SET QUERY: questions count active - BEFORE', { batchId });
       const { count: totalQuestions, error: questionsError } = await supabase

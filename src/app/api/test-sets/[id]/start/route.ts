@@ -39,16 +39,14 @@ export async function POST(
       return NextResponse.json({ error: 'Test set not found' }, { status: 404 });
     }
 
-    // Get user's plan
-    const { data: usageData } = await supabase
-      .from('user_usage')
-      .select('subscription:subscriptions(plan:plans(*))')
-      .eq('user_id', user.id)
+    // Get user's plan from profile (single source of truth)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan_slug')
+      .eq('id', user.id)
       .maybeSingle();
 
-    const subscription = (usageData as any)?.subscription;
-    const plan = subscription?.plan;
-    const userPlan = plan?.slug || 'free';
+    const userPlan = profile?.plan_slug || 'free';
 
     // Check if user can access this test set
     const { canAccess, reason } = await testSetsService.canAccessTestSet(supabase, user.id, testSetId, userPlan);

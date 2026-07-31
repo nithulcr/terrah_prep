@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Calendar, BookOpen, ClipboardList, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { Plan, UserUsage } from '@/types';
+import UserLayout from '@/app/user-layout';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -22,19 +23,47 @@ export default function DashboardPage() {
 
   const loadDashboard = async () => {
     try {
-      const { data: usageData } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', user?.id)
-        .maybeSingle();
+      // Get profile and usage in parallel
+      const [profileResult, usageResult, subscriptionResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user?.id)
+          .maybeSingle(),
+        
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', user?.id)
+          .maybeSingle(),
+
+        supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user?.id)
+          .eq('status', 'active')
+          .maybeSingle()
+      ]);
+
+      const profile = profileResult.data as any;
+      const usageData = usageResult.data as UserUsage | null;
+      const subscriptionData = subscriptionResult.data as any;
 
       if (usageData) {
-        setUsage(usageData as UserUsage);
-        const subscriptionData = (usageData as any).subscription;
+        setUsage(usageData);
         setSubscription(subscriptionData);
         
-        if (subscriptionData?.plan) {
-          setPlan(subscriptionData.plan as Plan);
+        // Get plan using profile.plan_slug (single source of truth)
+        if (profile?.plan_slug) {
+          const { data: planData } = await supabase
+            .from('plans')
+            .select('*')
+            .eq('slug', profile.plan_slug)
+            .maybeSingle();
+
+          if (planData) {
+            setPlan(planData as Plan);
+          }
         }
       }
     } catch (error) {
@@ -89,7 +118,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-20">
+    <UserLayout>
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -235,6 +264,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </section>
-    </main>
+    </UserLayout>
   );
 }

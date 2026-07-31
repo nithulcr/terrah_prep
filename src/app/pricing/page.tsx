@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Check, Crown } from 'lucide-react';
 import { Plan } from '@/types';
+import UserLayout from '@/app/user-layout';
 
 export default function PricingPage() {
   const { user } = useAuth();
@@ -29,24 +30,16 @@ export default function PricingPage() {
         setPlans(plansData);
       }
 
-      // Load user's current plan
+      // Load user's current plan from profile (single source of truth)
       if (user) {
-        const { data: usageData } = await supabase
-          .from('user_usage')
-          .select('subscription:subscriptions(plan:plans(*))')
-          .eq('user_id', user.id)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan_slug')
+          .eq('id', user.id)
           .maybeSingle();
 
-        const subscription = (usageData as any)?.subscription;
-        const plan = subscription?.plan;
-        
-        // Check if subscription is active
-        const isActive = subscription && 
-          subscription.status === 'active' && 
-          (!subscription.expires_at || new Date(subscription.expires_at) >= new Date());
-        
-        if (isActive && plan) {
-          setCurrentPlan(plan.slug);
+        if (profile?.plan_slug) {
+          setCurrentPlan(profile.plan_slug);
         }
       }
     } catch (error) {
@@ -78,7 +71,7 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-20">
+    <UserLayout>
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -240,6 +233,6 @@ export default function PricingPage() {
           </div>
         )}
       </section>
-    </main>
+    </UserLayout>
   );
 }

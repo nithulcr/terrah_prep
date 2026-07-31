@@ -9,8 +9,8 @@ export interface Profile {
   email: string;
   full_name?: string;
   phone?: string;
-  avatar_url?: string;
   role: UserRole;
+  plan_slug?: string;
   created_at: string;
   updated_at: string;
 }

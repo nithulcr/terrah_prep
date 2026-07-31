@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
 import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock } from 'lucide-react';
+import UserLayout from '@/app/user-layout';
 
 export default function MockTestPage() {
 
@@ -161,10 +162,7 @@ export default function MockTestPage() {
       setResult(data.result);
       setSubmitted(true);
 
-      // Redirect to mock tests page after 2 seconds to show updated status
-      setTimeout(() => {
-        window.location.href = '/mock-tests';
-      }, 2000);
+      // No auto-redirect - user can manually navigate using the buttons
     } catch (err) {
       setError('Failed to submit test');
     }
@@ -180,13 +178,21 @@ export default function MockTestPage() {
   }
 
   if (error) {
+    // Auto-redirect on error after 3 seconds
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        window.location.href = '/mock-tests';
+      }, 3000);
+      return () => clearTimeout(timer);
+    }, [error]);
+
     return <main className="mx-auto max-w-2xl p-6">
       <Card>
         <CardBody className="p-8 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-red-600" />
           <h1 className="mt-3 text-2xl font-bold">Error</h1>
           <p className="mt-3 text-slate-600">{error}</p>
-          <p className="mt-2 text-sm text-red-600">Check browser console for details</p>
+          <p className="mt-2 text-sm text-red-600">Redirecting to mock tests in 3 seconds...</p>
           <Link href="/mock-tests">
             <Button className="mt-6">Back to Mock Tests</Button>
           </Link>
@@ -282,7 +288,9 @@ export default function MockTestPage() {
   const answeredCount = Object.keys(answers).length;
   const progressPercentage = (answeredCount / questions.length) * 100;
 
-  return <main className="mx-auto max-w-3xl p-6">
+  return (
+    <UserLayout>
+      <div className="mx-auto max-w-3xl p-6">
     {/* Timer Display */}
     {timeRemaining > 0 && (
       <div className={`mb-4 rounded-lg p-4 ${timeRemaining < 300 ? 'bg-red-50' : 'bg-blue-50'}`}>
@@ -399,5 +407,7 @@ export default function MockTestPage() {
         </div>
       </CardBody>
     </Card>
-  </main>;
+      </div>
+    </UserLayout>
+  );
 }

@@ -4,7 +4,10 @@
 // ALL subscription logic - database-driven, NO hardcoded values
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Plan, UserUsage, UsageSummary } from '@/types';
+import { Plan, Profile, UserUsage, UsageSummary } from '@/types';
+
+// Default free question limit for users without a subscription
+const FREE_QUESTION_LIMIT = 10;
 
 // ============================================
 // TYPES
@@ -13,6 +16,7 @@ import { Plan, UserUsage, UsageSummary } from '@/types';
 export interface SubscriptionInfo {
   subscription: any | null;
   plan: Plan | null;
+  profile: Profile | null;
   usage: UserUsage | null;
   summary: UsageSummary | null;
   error?: string | null;
@@ -44,29 +48,65 @@ export const subscriptionService = {
       console.log('=== getUserSubscription ===');
       console.log('userId:', userId);
 
-      // Get user usage with subscription and plan
-      const { data: usageData, error: usageError } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user profile and usage in parallel
+      const [profileResult, usageResult, subscriptionResult] = await Promise.all([
+        // Get profile to read plan_slug (single source of truth)
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle(),
+        
+        // Get user usage
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
 
-      console.log('Query Result - Usage Data:', usageData);
-      console.log('Query Error - Usage:', usageError);
+        // Get active subscription (for status and dates only)
+        supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle()
+      ]);
 
-      if (usageError || !usageData) {
+      const profile = profileResult.data as Profile | null;
+      const usage = usageResult.data as UserUsage | null;
+      const subscription = subscriptionResult.data as any | null;
+
+      if (profileResult.error || !profile) {
         return {
           subscription: null,
           plan: null,
+          profile: null,
           usage: null,
           summary: null,
-          error: usageError?.message || null,
+          error: profileResult.error?.message || 'Profile not found',
         };
       }
 
-      const usage = usageData as UserUsage;
-      const subscription = (usageData as any).subscription;
-      const plan = subscription?.plan as Plan | null;
+      // Get plan details using profile.plan_slug (single source of truth)
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile.plan_slug || 'free')
+        .maybeSingle();
+
+      const plan = planData as Plan | null;
+
+      if (!usage) {
+        return {
+          subscription,
+          plan,
+          profile,
+          usage: null,
+          summary: null,
+          error: 'Usage data not found',
+        };
+      }
 
       // Build usage summary
       const summary: UsageSummary = {
@@ -83,6 +123,7 @@ export const subscriptionService = {
       return {
         subscription,
         plan,
+        profile,
         usage,
         summary,
       };
@@ -91,6 +132,7 @@ export const subscriptionService = {
       return {
         subscription: null,
         plan: null,
+        profile: null,
         usage: null,
         summary: null,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -113,13 +155,11 @@ export const subscriptionService = {
     const { plan } = await this.getUserSubscription(supabase, userId);
     
     if (!plan) {
-      // Free plan - load from settings
-      const { settingsService } = await import('./settings.service');
-      const settings = await settingsService.getAllSettings(supabase);
+      // Free plan - use default
       return {
         daily_question_limit: 0,
         monthly_mock_test_limit: 0,
-        lifetime_question_limit: settings.free_question_limit,
+        lifetime_question_limit: FREE_QUESTION_LIMIT,
       };
     }
 

@@ -80,9 +80,30 @@ function calculateRemaining(
 // ============================================
 
 export function useSubscription(): UseSubscriptionReturn {
-  const { user, subscription, usage, refreshUsage } = useAuth();
+  const { user, subscription, usage, refreshUsage, profile } = useAuth();
   
-  const plan = subscription?.plan ?? null;
+  // Get plan from profile.plan_slug (single source of truth)
+  const [plan, setPlan] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchPlan = async () => {
+      if (!profile?.plan_slug) {
+        setPlan(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile.plan_slug)
+        .maybeSingle();
+
+      setPlan(data);
+    };
+
+    fetchPlan();
+  }, [profile?.plan_slug]);
+
   const features = getFeatureFlags(plan);
   
   // Calculate remaining quotas

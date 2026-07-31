@@ -53,39 +53,60 @@ export default function AdminDashboardPage() {
         .from('questions')
         .select('*', { count: 'exact', head: true });
 
-      // Get active subscriptions with plan details
+      // Get active subscriptions with user profiles (single source of truth: profiles.plan_slug)
       const { data: subscriptions } = await supabase
         .from('subscriptions')
-        .select('plan:plans(*)')
+        .select('user_id, status')
         .eq('status', 'active');
 
       const activeSubscriptions = subscriptions?.length ?? 0;
-      const freeUsers = subscriptions?.filter((s: any) => s.plan?.slug === 'free').length ?? 0;
+
+      // Get user profiles to determine plan_slug
+      const userIds = subscriptions?.map(s => s.user_id) || [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, plan_slug')
+        .in('id', userIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p.plan_slug]) || []);
+
+      // Get all plans for revenue calculation
+      const { data: plans } = await supabase
+        .from('plans')
+        .select('*');
+
+      const plansMap = new Map(plans?.map(p => [p.slug, p]) || []);
+
+      const freeUsers = subscriptions?.filter(s => profilesMap.get(s.user_id) === 'free').length ?? 0;
 
       // Calculate revenue (simplified - sum of all active paid subscriptions)
-      const totalRevenue = subscriptions?.reduce((sum: number, s: any) => {
-        if (s.plan && s.plan.slug !== 'free') {
-          return sum + Number(s.plan.price);
+      const totalRevenue = subscriptions?.reduce((sum: number, s) => {
+        const planSlug = profilesMap.get(s.user_id);
+        const plan = plansMap.get(planSlug || '');
+        if (plan && plan.slug !== 'free') {
+          return sum + Number(plan.price);
         }
         return sum;
       }, 0) ?? 0;
 
-      // Get plan-wise stats
-      const { data: allSubscriptions } = await supabase
-        .from('subscriptions')
-        .select('plan:plans(*)')
-        .eq('status', 'active');
+      // Get plan-wise stats from profiles (single source of truth)
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('plan_slug');
 
       const planCounts: Record<string, { count: number; revenue: number }> = {};
       
-      allSubscriptions?.forEach((s: any) => {
-        const planName = s.plan?.name || 'Unknown';
+      allProfiles?.forEach((profile) => {
+        const plan = plansMap.get(profile.plan_slug || 'free');
+        const planName = plan?.name || 'Unknown';
+        const planSlug = plan?.slug || 'free';
+        
         if (!planCounts[planName]) {
           planCounts[planName] = { count: 0, revenue: 0 };
         }
         planCounts[planName].count++;
-        if (s.plan?.slug !== 'free') {
-          planCounts[planName].revenue += Number(s.plan?.price || 0);
+        if (planSlug !== 'free') {
+          planCounts[planName].revenue += Number(plan?.price || 0);
         }
       });
 

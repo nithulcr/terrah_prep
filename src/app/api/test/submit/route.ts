@@ -155,6 +155,8 @@ export async function POST(request: Request) {
         : 0;
 
     // Update test result with scores and mark as completed
+    console.log('SUBMIT API - Updating test result:', { testResultId });
+    
     const { data: updatedTestResult, error: updateError } = await supabase
       .from('test_results')
       .update({
@@ -172,14 +174,37 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (updateError || !updatedTestResult) {
-      console.error("UPDATE ERROR");
-      console.dir(updateError, { depth: null });
+    console.log('SUBMIT API - Update result:', {
+      updatedTestResult,
+      updateError,
+      hasError: !!updateError,
+      hasResult: !!updatedTestResult,
+    });
+
+    if (updateError) {
+      console.error("UPDATE ERROR - Full details:", {
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+      });
 
       return NextResponse.json(
         {
           error: "Failed to save test result",
-          databaseError: updateError,
+          databaseError: updateError.message,
+          code: updateError.code,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!updatedTestResult) {
+      console.error("UPDATE ERROR - No result returned");
+      return NextResponse.json(
+        {
+          error: "Failed to save test result",
+          message: "No data returned after update",
         },
         { status: 500 }
       );

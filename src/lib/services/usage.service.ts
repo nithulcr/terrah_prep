@@ -3,9 +3,11 @@
 // ============================================
 // ALL limits come from database - NO hardcoded plan checks
 
-import { settingsService } from '@/lib/services/settings.service';
 import { UserUsage, UsageSummary, Plan } from '@/types';
 import { SupabaseClient } from '@supabase/supabase-js';
+
+// Default free question limit for users without a subscription
+const FREE_QUESTION_LIMIT = 10;
 
 // ============================================
 // TYPES
@@ -48,51 +50,48 @@ export const usageService = {
       console.log('=== getUserUsageSummary ===');
       console.log('userId:', userId);
 
-      // Get user usage with subscription and plan
-      const { data: usageData, error: usageError } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user profile and usage in parallel
+      const [profileResult, usageResult] = await Promise.all([
+        // Get profile to read plan_slug (single source of truth)
+        supabase
+          .from('profiles')
+          .select('plan_slug')
+          .eq('id', userId)
+          .maybeSingle(),
+        
+        // Get user usage
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
 
-      console.log('Query Result - Usage Data:', usageData);
-      console.log('Query Error - Usage:', usageError);
+      const profile = profileResult.data as { plan_slug: string } | null;
+      const usage = usageResult.data as UserUsage | null;
 
-      if (usageError) {
-        return { usage: null, error: usageError.message };
+      if (profileResult.error) {
+        return { usage: null, error: profileResult.error.message };
       }
 
-      if (!usageData) {
+      if (!usage) {
         return { usage: null, error: 'No usage data found' };
       }
 
-      const usage = usageData as UserUsage;
-      const subscription = (usageData as any).subscription;
-      const plan = subscription?.plan as Plan | null;
+      // Get plan details using profile.plan_slug (single source of truth)
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile?.plan_slug || 'free')
+        .maybeSingle();
 
-      // If no active subscription, return free plan usage
-      if (!plan) {
-        const settings = await settingsService.getAllSettings(supabase);
-        return {
-          usage: {
-            plan_slug: 'free',
-            daily_question_limit: 0,
-            monthly_mock_test_limit: 0,
-            lifetime_question_limit: settings.free_question_limit,
-            questions_today: usage.questions_today,
-            tests_this_month: usage.tests_this_month,
-            free_questions_used: usage.free_questions_used,
-            subscription_expires_at: null,
-          },
-          error: null,
-        };
-      }
+      const plan = planData as Plan | null;
 
       const usageSummary: UsageSummary = {
-        plan_slug: plan.slug,
-        daily_question_limit: plan.daily_question_limit,
-        monthly_mock_test_limit: plan.monthly_mock_test_limit,
-        lifetime_question_limit: plan.lifetime_question_limit,
+        plan_slug: plan?.slug || 'free',
+        daily_question_limit: plan?.daily_question_limit || 0,
+        monthly_mock_test_limit: plan?.monthly_mock_test_limit || 0,
+        lifetime_question_limit: plan?.lifetime_question_limit || 0,
         questions_today: usage.questions_today,
         tests_this_month: usage.tests_this_month,
         free_questions_used: usage.free_questions_used,
@@ -202,26 +201,42 @@ export const usageService = {
       console.log('=== getUserUsageWithPlan ===');
       console.log('userId:', userId);
 
-      const { data, error } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user profile and usage in parallel
+      const [profileResult, usageResult] = await Promise.all([
+        // Get profile to read plan_slug (single source of truth)
+        supabase
+          .from('profiles')
+          .select('plan_slug')
+          .eq('id', userId)
+          .maybeSingle(),
+        
+        // Get user usage
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
 
-      console.log('Query Result - Usage with Plan:', data);
-      console.log('Query Error - Usage:', error);
+      const profile = profileResult.data as { plan_slug: string } | null;
+      const usage = usageResult.data as UserUsage | null;
 
-      if (error) {
-        return { usage: null, plan: null, error: error.message };
+      if (profileResult.error) {
+        return { usage: null, plan: null, error: profileResult.error.message };
       }
 
-      if (!data) {
+      if (!usage) {
         return { usage: null, plan: null, error: null };
       }
 
-      const usage = data as UserUsage;
-      // @ts-ignore - Supabase nested relation typing limitation
-      const plan = (data as any).subscription?.plan || null;
+      // Get plan details using profile.plan_slug (single source of truth)
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile?.plan_slug || 'free')
+        .maybeSingle();
+
+      const plan = planData as Plan | null;
 
       return { usage, plan, error: null };
     } catch (error) {
@@ -239,17 +254,36 @@ export const usageService = {
       console.log('=== canAccessQuestions ===');
       console.log('userId:', userId);
 
-      // Get user usage with subscription and plan
-      const { data: usageData, error: usageError } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user profile and usage in parallel
+      const [profileResult, usageResult, subscriptionResult] = await Promise.all([
+        // Get profile to read plan_slug (single source of truth)
+        supabase
+          .from('profiles')
+          .select('plan_slug')
+          .eq('id', userId)
+          .maybeSingle(),
+        
+        // Get user usage
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
 
-      console.log('Query Result - Usage Data:', usageData);
-      console.log('Query Error - Usage:', usageError);
+        // Get active subscription (for expiry check only)
+        supabase
+          .from('subscriptions')
+          .select('expires_at')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle()
+      ]);
 
-      if (usageError || !usageData) {
+      const profile = profileResult.data as { plan_slug: string } | null;
+      const usage = usageResult.data as UserUsage | null;
+      const subscription = subscriptionResult.data as any | null;
+
+      if (profileResult.error || !profile) {
         return {
           canAccess: false,
           reason: 'Unable to verify subscription status',
@@ -258,14 +292,27 @@ export const usageService = {
         };
       }
 
-      const usage = usageData as UserUsage;
-      const subscription = (usageData as any).subscription;
-      const plan = subscription?.plan as Plan | null;
+      if (!usage) {
+        return {
+          canAccess: false,
+          reason: 'No usage data found',
+          usage: null,
+          plan: null,
+        };
+      }
 
-      // If no active subscription, user is on free plan
+      // Get plan details using profile.plan_slug (single source of truth)
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile.plan_slug || 'free')
+        .maybeSingle();
+
+      const plan = planData as Plan | null;
+
+      // If no plan found, user is on free plan
       if (!plan) {
-        const settings = await settingsService.getAllSettings(supabase);
-        const freeLimit = settings.free_question_limit;
+        const freeLimit = FREE_QUESTION_LIMIT;
         
         if (usage.free_questions_used >= freeLimit) {
           return {
@@ -303,7 +350,7 @@ export const usageService = {
       }
 
       // Check if subscription is expired
-      if (subscription.expires_at && new Date(subscription.expires_at) < new Date()) {
+      if (subscription?.expires_at && new Date(subscription.expires_at) < new Date()) {
         return {
           canAccess: false,
           reason: 'Subscription expired. Please renew your subscription.',
@@ -337,7 +384,7 @@ export const usageService = {
               questions_today: usage.questions_today,
               tests_this_month: usage.tests_this_month,
               free_questions_used: usage.free_questions_used,
-              subscription_expires_at: subscription.expires_at,
+              subscription_expires_at: subscription?.expires_at,
             },
             plan,
           };
@@ -358,7 +405,7 @@ export const usageService = {
               questions_today: usage.questions_today,
               tests_this_month: usage.tests_this_month,
               free_questions_used: usage.free_questions_used,
-              subscription_expires_at: subscription.expires_at,
+              subscription_expires_at: subscription?.expires_at,
             },
             plan,
           };
@@ -375,7 +422,7 @@ export const usageService = {
           questions_today: usage.questions_today,
           tests_this_month: usage.tests_this_month,
           free_questions_used: usage.free_questions_used,
-          subscription_expires_at: subscription.expires_at,
+          subscription_expires_at: subscription?.expires_at,
         },
         plan,
       };
@@ -399,17 +446,36 @@ export const usageService = {
       console.log('=== canStartMockTest ===');
       console.log('userId:', userId);
 
-      // Get user usage with subscription and plan
-      const { data: usageData, error: usageError } = await supabase
-        .from('user_usage')
-        .select('*, subscription:subscriptions(plan:plans(*))')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get user profile and usage in parallel
+      const [profileResult, usageResult, subscriptionResult] = await Promise.all([
+        // Get profile to read plan_slug (single source of truth)
+        supabase
+          .from('profiles')
+          .select('plan_slug')
+          .eq('id', userId)
+          .maybeSingle(),
+        
+        // Get user usage
+        supabase
+          .from('user_usage')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
 
-      console.log('Query Result - Usage Data:', usageData);
-      console.log('Query Error - Usage:', usageError);
+        // Get active subscription (for expiry check only)
+        supabase
+          .from('subscriptions')
+          .select('expires_at')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle()
+      ]);
 
-      if (usageError || !usageData) {
+      const profile = profileResult.data as { plan_slug: string } | null;
+      const usage = usageResult.data as UserUsage | null;
+      const subscription = subscriptionResult.data as any | null;
+
+      if (profileResult.error || !profile) {
         return {
           canAccess: false,
           reason: 'Unable to verify subscription status',
@@ -418,14 +484,27 @@ export const usageService = {
         };
       }
 
-      const usage = usageData as UserUsage;
-      const subscription = (usageData as any).subscription;
-      const plan = subscription?.plan as Plan | null;
+      if (!usage) {
+        return {
+          canAccess: false,
+          reason: 'No usage data found',
+          usage: null,
+          plan: null,
+        };
+      }
 
-      // If no active subscription, check free plan limits
+      // Get plan details using profile.plan_slug (single source of truth)
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('slug', profile.plan_slug || 'free')
+        .maybeSingle();
+
+      const plan = planData as Plan | null;
+
+      // If no plan found, user is on free plan
       if (!plan) {
-        const settings = await settingsService.getAllSettings(supabase);
-        const freeLimit = settings.free_question_limit;
+        const freeLimit = FREE_QUESTION_LIMIT;
         
         // Free users can only take Test 1 (mock test limit = 0 means only test 1)
         // This is handled by the mock test availability logic
@@ -446,7 +525,7 @@ export const usageService = {
       }
 
       // Check if subscription is expired
-      if (subscription.expires_at && new Date(subscription.expires_at) < new Date()) {
+      if (subscription?.expires_at && new Date(subscription.expires_at) < new Date()) {
         return {
           canAccess: false,
           reason: 'Subscription expired. Please renew your subscription.',
@@ -480,7 +559,7 @@ export const usageService = {
               questions_today: usage.questions_today,
               tests_this_month: usage.tests_this_month,
               free_questions_used: usage.free_questions_used,
-              subscription_expires_at: subscription.expires_at,
+              subscription_expires_at: subscription?.expires_at,
             },
             plan,
           };
@@ -497,7 +576,7 @@ export const usageService = {
           questions_today: usage.questions_today,
           tests_this_month: usage.tests_this_month,
           free_questions_used: usage.free_questions_used,
-          subscription_expires_at: subscription.expires_at,
+          subscription_expires_at: subscription?.expires_at,
         },
         plan,
       };

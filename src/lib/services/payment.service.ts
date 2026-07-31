@@ -261,9 +261,11 @@ export const paymentService = {
       console.log('=== getSubscriptionHistory ===');
       console.log('userId:', userId);
 
+      // Get subscription history (for historical records)
+      // Note: Current plan should be read from profiles.plan_slug, not from subscription history
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, plan:plans(*)')
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 

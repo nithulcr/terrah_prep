@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { DynamicTest, TestSetStats } from '@/types';
 import { Trophy, Lock, Play, CheckCircle, Crown, RefreshCw } from 'lucide-react';
+import UserLayout from '@/app/user-layout';
 
 export default function MockTestsPage() {
   const { user } = useAuth();
@@ -148,7 +149,7 @@ export default function MockTestsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-20">
+    <UserLayout>
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -205,25 +206,25 @@ export default function MockTestsPage() {
                       <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                         <div className="rounded-lg bg-blue-50 p-3 text-center">
                           <p className="text-xs text-slate-600">Total Questions</p>
-                          <p className="text-lg font-bold text-blue-600">
+                          <p className="text-4xl font-bold text-blue-600">
                             {stats.totalQuestions}
                           </p>
                         </div>
                         <div className="rounded-lg bg-green-50 p-3 text-center">
                           <p className="text-xs text-slate-600">Questions per Test</p>
-                          <p className="text-lg font-bold text-green-600">
+                          <p className="text-4xl font-bold text-green-600">
                             {stats.questionsPerTest}
                           </p>
                         </div>
                         <div className="rounded-lg bg-purple-50 p-3 text-center">
                           <p className="text-xs text-slate-600">Available Tests</p>
-                          <p className="text-lg font-bold text-purple-600">
+                          <p className="text-4xl font-bold text-purple-600">
                             {stats.totalAvailableTests}
                           </p>
                         </div>
                         <div className="rounded-lg bg-yellow-50 p-3 text-center">
                           <p className="text-xs text-slate-600">Remaining</p>
-                          <p className="text-lg font-bold text-yellow-600">
+                          <p className="text-4xl font-bold text-yellow-600">
                             {stats.remainingTests}
                           </p>
                         </div>
@@ -305,6 +306,6 @@ export default function MockTestsPage() {
           </div>
         )}
       </section>
-    </main>
+    </UserLayout>
   );
 }

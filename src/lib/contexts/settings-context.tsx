@@ -1,11 +1,14 @@
 // ============================================
 // TERRAH PREP - SETTINGS CONTEXT
 // ============================================
+// Only manages maintenance_mode from app_settings.
+// All test configuration values are in src/config/testConfig.ts
 
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { settingsService, AppSettings } from '@/lib/services/settings.service';
+import { supabase } from '@/lib/supabase/client';
 
 // ============================================
 // TYPES
@@ -59,7 +62,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      const data = await settingsService.getAllSettings();
+      const data = await settingsService.getAllSettings(supabase);
       setSettings(data);
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -82,7 +85,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const updateSetting = async (key: string, value: any): Promise<{ success: boolean; error?: string }> => {
     try {
       setError(null);
-      const result = await settingsService.updateSettingClient(key, value);
+      const result = await settingsService.updateSetting(supabase, key, value);
       
       if (result.success) {
         // Refresh settings after update

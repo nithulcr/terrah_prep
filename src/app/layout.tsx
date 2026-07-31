@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
 import './globals.css';
-import { Header, Footer } from '@/components/layout';
+import { Footer } from '@/components/layout';
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { ScrollDetector } from "@/components/ScrollDetector";
 import { AuthProvider } from '@/lib/auth/auth-provider';
@@ -33,7 +33,6 @@ export default function RootLayout({
         <SmoothScroll>
           <AuthProvider>
             <SettingsProvider>
-              <Header />
               <main className="flex-grow">
                 {children}
               </main>

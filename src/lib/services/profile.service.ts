@@ -19,7 +19,6 @@ export interface ProfileCreateData {
 export interface ProfileUpdateData {
   full_name?: string;
   phone?: string;
-  avatar_url?: string;
 }
 
 // ============================================
