@@ -225,9 +225,11 @@ export const mockTestsService = {
       const remainingTests = Math.max(0, availableTests - completedTests);
       
       const stats: TestSetStats = {
-        totalQuestions: questions.length,
+        // Show questions based on user's plan limit, not total in database
+        totalQuestions: availableTests * questionsPerTest,
         questionsPerTest: questionsPerTest,
-        totalAvailableTests: totalAvailableTests || 0,
+        // Show user's plan limit, not total generated tests
+        totalAvailableTests: availableTests,
         availableTests, // Add this so frontend knows how many tests to show
         completedTests,
         remainingTests,

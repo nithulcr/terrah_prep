@@ -32,6 +32,7 @@ export default function MockTestPage() {
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [reviewFlags, setReviewFlags] = useState<number[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [testDuration, setTestDuration] = useState<number>(90); // Default 90 minutes
 
   useEffect(() => {
     if (!batchId || !testNumber) {
@@ -95,6 +96,8 @@ export default function MockTestPage() {
         console.log('MockTestPage: Question IDs received:', data.questions?.map((q: Question) => q.id));
         setTestResultId(data.testResultId);
         setQuestions(data.questions || []);
+        setTestDuration(data.testDurationMinutes || 90); // Set duration from API
+        setTimeRemaining((data.testDurationMinutes || 90) * 60); // Convert to seconds
         setLoading(false);
       } catch (err) {
         setError('Failed to load test');
@@ -104,6 +107,25 @@ export default function MockTestPage() {
 
     void startTest();
   }, [testNumber, batchId, router]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeRemaining <= 0 || submitted) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          // Time's up - auto submit
+          clearInterval(timer);
+          handleSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining, submitted]);
 
   const handleSubmit = async () => {
     try {
@@ -261,6 +283,21 @@ export default function MockTestPage() {
   const progressPercentage = (answeredCount / questions.length) * 100;
 
   return <main className="mx-auto max-w-3xl p-6">
+    {/* Timer Display */}
+    {timeRemaining > 0 && (
+      <div className={`mb-4 rounded-lg p-4 ${timeRemaining < 300 ? 'bg-red-50' : 'bg-blue-50'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className={`h-5 w-5 ${timeRemaining < 300 ? 'text-red-600' : 'text-blue-600'}`} />
+            <span className="font-semibold text-slate-700">Time Remaining</span>
+          </div>
+          <span className={`text-2xl font-bold ${timeRemaining < 300 ? 'text-red-600' : 'text-blue-600'}`}>
+            {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
+          </span>
+        </div>
+      </div>
+    )}
+
     {/* Progress Bar */}
     <div className="mb-4 rounded-lg bg-slate-100 p-4">
       <div className="mb-2 flex items-center justify-between text-sm">
@@ -288,18 +325,32 @@ export default function MockTestPage() {
       <CardBody className="p-6">
         <h1 className="text-xl font-semibold">{question.question}</h1>
         <div className="mt-6 space-y-3">
-          {questionOptions(question).map((option) => (
-            <button
-              key={option.key}
-              onClick={() => setAnswers((all) => ({ ...all, [question.id]: option.key }))}
-              className={`block w-full rounded border p-3 text-left transition-colors ${answers[question.id] === option.key
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-slate-200 hover:border-blue-300'
-                }`}
-            >
-              <strong>{option.key}.</strong> {option.text}
-            </button>
-          ))}
+          {questionOptions(question).map((option) => {
+            const isSelected = answers[question.id] === option.key;
+            return (
+              <button
+                key={option.key}
+                onClick={() => {
+                  // Toggle: if already selected, deselect; otherwise select
+                  if (isSelected) {
+                    setAnswers((all) => {
+                      const newAnswers = { ...all };
+                      delete newAnswers[question.id];
+                      return newAnswers;
+                    });
+                  } else {
+                    setAnswers((all) => ({ ...all, [question.id]: option.key }));
+                  }
+                }}
+                className={`block w-full rounded border p-3 text-left transition-colors ${isSelected
+                    ? 'border-blue-600 bg-blue-50'
+                    : 'border-slate-200 hover:border-blue-300'
+                  }`}
+              >
+                <strong>{option.key}.</strong> {option.text}
+              </button>
+            );
+          })}
         </div>
 
         {/* Action Buttons */}

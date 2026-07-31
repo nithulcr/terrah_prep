@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from '@/lib/config';
 import { usageService } from '@/lib/services/usage.service';
 import { testSetsService } from '@/lib/services/test-sets.service';
+import { settingsService } from '@/lib/services/settings.service';
 
 export async function POST(request: Request) {
   try {
@@ -200,12 +201,17 @@ export async function POST(request: Request) {
 
     console.log('API: Success! Returning', limitedQuestions.length, 'questions');
 
+    // Get test duration from settings
+    const settings = await settingsService.getAllSettings(supabase);
+    const testDurationMinutes = settings.test_duration_minutes || 90;
+
     return NextResponse.json({
       success: true,
       testResultId: finalTestResultId,
       batch,
       questions: limitedQuestions,
       testNumber: testSet.set_number,
+      testDurationMinutes, // Add duration to response
     });
   } catch (error) {
     console.error('API: Error starting test:', error);

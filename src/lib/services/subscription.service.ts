@@ -15,6 +15,7 @@ export interface SubscriptionInfo {
   plan: Plan | null;
   usage: UserUsage | null;
   summary: UsageSummary | null;
+  error?: string | null;
 }
 
 export interface PlanLimits {
@@ -59,6 +60,7 @@ export const subscriptionService = {
           plan: null,
           usage: null,
           summary: null,
+          error: usageError?.message || null,
         };
       }
 
@@ -91,6 +93,7 @@ export const subscriptionService = {
         plan: null,
         usage: null,
         summary: null,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   },
