@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { TestResult, Question, UserAnswer } from '@/types';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Trophy, Calendar, TrendingUp, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import UserLayout from '@/app/user-layout';
 
 export default function ResultsPage() {
   const { user } = useAuth();
@@ -128,7 +129,8 @@ export default function ResultsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-20">
+    <UserLayout>
+      <main className="min-h-screen bg-slate-50">
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -359,5 +361,6 @@ export default function ResultsPage() {
         )}
       </section>
     </main>
+    </UserLayout>
   );
 }

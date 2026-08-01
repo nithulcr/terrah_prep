@@ -99,6 +99,7 @@ export default function MockTestPage() {
         setQuestions(data.questions || []);
         setTestDuration(data.testDurationMinutes || 90); // Set duration from API
         setTimeRemaining((data.testDurationMinutes || 90) * 60); // Convert to seconds
+        setIsResuming(data.isResuming || false); // Set resume flag
         setLoading(false);
       } catch (err) {
         setError('Failed to load test');
@@ -204,6 +205,47 @@ export default function MockTestPage() {
   if (!questions.length) return <main className="p-6"><h1 className="text-2xl font-bold">Test {testNumber}</h1><p className="mt-3">No questions are available for this test.</p></main>;
 
   const question = questions[index];
+
+  // Show resume confirmation if user is resuming an in-progress test
+  if (isResuming && !submitted) {
+    return (
+      <UserLayout>
+        <div className="mx-auto max-w-2xl p-6">
+          <Card>
+            <CardBody className="p-8 text-center">
+              <AlertCircle className="mx-auto h-12 w-12 text-blue-600" />
+              <h1 className="mt-4 text-2xl font-bold">Resume Test?</h1>
+              <p className="mt-3 text-slate-600">
+                You have an incomplete test. Would you like to continue where you left off or start fresh?
+              </p>
+              <div className="mt-6 flex gap-4">
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={() => setIsResuming(false)}
+                >
+                  Continue Test
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    // Reset test by creating a new test result
+                    setTestResultId(null);
+                    setIsResuming(false);
+                    // Trigger test start again
+                    window.location.reload();
+                  }}
+                >
+                  Start Fresh
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </UserLayout>
+    );
+  }
 
   if (submitted && result) {
     return <main className="mx-auto max-w-4xl p-6">

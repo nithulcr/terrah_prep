@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { useAuth } from '@/lib/auth/use-auth';
 import { TrendingUp, Trophy, Target, AlertCircle, CheckCircle, BarChart3 } from 'lucide-react';
+import UserLayout from '@/app/user-layout';
 
 interface CategoryAnalytics {
   category: string;
@@ -93,28 +94,32 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="text-slate-600">Loading analytics...</p>
-        </div>
-      </main>
+      <UserLayout>
+        <main className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <p className="text-slate-600">Loading analytics...</p>
+          </div>
+        </main>
+      </UserLayout>
     );
   }
 
   if (error) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <Card>
-          <CardBody className="p-8 text-center">
-            <h1 className="text-2xl font-bold">Error</h1>
-            <p className="mt-3 text-slate-600">{error}</p>
-            <Link href="/pricing">
-              <Button className="mt-6">Upgrade Plan</Button>
-            </Link>
-          </CardBody>
-        </Card>
-      </main>
+      <UserLayout>
+        <main className="mx-auto max-w-2xl p-6">
+          <Card>
+            <CardBody className="p-8 text-center">
+              <h1 className="text-2xl font-bold">Error</h1>
+              <p className="mt-3 text-slate-600">{error}</p>
+              <Link href="/pricing">
+                <Button className="mt-6">Upgrade Plan</Button>
+              </Link>
+            </CardBody>
+          </Card>
+        </main>
+      </UserLayout>
     );
   }
 
@@ -123,7 +128,8 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-20">
+    <UserLayout>
+      <main className="min-h-screen bg-slate-50">
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -356,5 +362,6 @@ export default function AnalyticsPage() {
         )}
       </section>
     </main>
+    </UserLayout>
   );
 }

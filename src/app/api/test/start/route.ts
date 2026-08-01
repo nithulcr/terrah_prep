@@ -147,6 +147,7 @@ export async function POST(request: Request) {
     });
 
     let finalTestResultId: number;
+    let isResuming = false;
     
     if (testResultError || !testResult) {
       console.error('TEST START API - Error creating test result:', testResultError);
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
         // Try to get existing test result
         const { data: existingResult } = await supabase
           .from('test_results')
-          .select('id')
+          .select('id, completed_at')
           .eq('user_id', user.id)
           .eq('batch_id', batchId)
           .eq('test_number', testSet.set_number)
@@ -167,6 +168,8 @@ export async function POST(request: Request) {
         if (existingResult) {
           console.log('TEST START API - Using existing test result:', existingResult.id);
           finalTestResultId = existingResult.id;
+          // If not completed, user is resuming
+          isResuming = !existingResult.completed_at;
         } else {
           return NextResponse.json({ 
             error: 'Failed to create test result',
@@ -211,6 +214,7 @@ export async function POST(request: Request) {
       questions: limitedQuestions,
       testNumber: testSet.set_number,
       testDurationMinutes, // Add duration to response
+      isResuming, // Indicate if user is resuming an in-progress test
     });
   } catch (error) {
     console.error('API: Error starting test:', error);
