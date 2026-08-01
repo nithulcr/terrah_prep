@@ -46,7 +46,7 @@ export const UserHeader: React.FC = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-sm font-medium transition-colors ${
+                className={` font-medium transition-colors ${
                   isActive(link.href)
                     ? 'text-blue-600'
                     : 'text-gray-700 hover:text-blue-600'

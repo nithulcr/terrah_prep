@@ -246,7 +246,7 @@ export default function MockTestsPage() {
                             return (
                               <Card key={test.testNumber} className="border border-slate-200">
                                 <CardBody className="p-4">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex flex-col md:flex-row gap-2 md:items-center justify-between">
                                     <div className="flex items-center gap-3">
                                       {getStatusIcon(status)}
                                       <div>

@@ -96,7 +96,7 @@ export const mockTestsService = {
 
       const categoryCounts = Array.from(categoryCountsMap.values());
 
-      // Get user's completed tests
+      // Get user's completed tests (only tests with completed_at set)
       console.log('MOCK TESTS QUERY: test_results select completed tests - BEFORE', {
         batchId,
         userId,
@@ -107,6 +107,7 @@ export const mockTestsService = {
         .eq('user_id', userId)
         .eq('batch_id', batchId)
         .not('test_number', 'is', null)
+        .not('completed_at', 'is', null) // Only get completed tests
         .order('test_number', { ascending: true });
 
       console.log('MOCK TESTS QUERY: test_results select completed tests - AFTER', {
@@ -404,18 +405,25 @@ export const mockTestsService = {
       if (!allowRetest) {
         const { data: existingResult } = await supabase
           .from('test_results')
-          .select('id')
+          .select('id, completed_at')
           .eq('user_id', userId)
           .eq('batch_id', batchId)
           .eq('test_number', testNumber)
           .maybeSingle();
 
-        if (existingResult) {
+        if (existingResult && existingResult.completed_at) {
+          // Only block if test is actually completed (has completed_at timestamp)
           console.log('Access denied: Test already completed');
           return {
             canAccess: false,
             reason: 'You have already completed this test.',
           };
+        }
+        
+        // If test exists but not completed, allow access (user can resume)
+        if (existingResult && !existingResult.completed_at) {
+          console.log('Access granted: Test in progress, user can resume');
+          return { canAccess: true };
         }
       }
 
