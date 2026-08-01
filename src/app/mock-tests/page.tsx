@@ -250,7 +250,7 @@ export default function MockTestsPage() {
                                     <div className="flex items-center gap-3">
                                       {getStatusIcon(status)}
                                       <div>
-                                        <h4 className="font-semibold text-slate-900">
+                                        <h4 className="font-semibold text-slate-900 md:text-lg">
                                           {test.name}
                                         </h4>
                                         <p className="text-sm text-slate-600">

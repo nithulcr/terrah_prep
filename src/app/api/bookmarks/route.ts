@@ -3,29 +3,46 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { config } from '@/lib/config';
 import { createServerClient } from '@/lib/supabase/server';
-import { usageService } from '@/lib/services/usage.service';
 
 // GET /api/bookmarks - Get user's bookmarks
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createServerClient();
+    // Try to get token from Authorization header first
+    const authHeader = request.headers.get('Authorization');
+    let supabase;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      // Create Supabase client with token from client
+      supabase = createClient(
+        config.supabase.url,
+        config.supabase.anonKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          global: {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          },
+        }
+      );
+    } else {
+      // Fall back to cookie-based auth (for server components)
+      supabase = await createServerClient();
+    }
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('Auth failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user has bookmark permission
-    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
-    
-    if (!plan || !plan.allow_bookmarks) {
-      return NextResponse.json(
-        { error: 'Bookmarks are not available in your current plan' },
-        { status: 403 }
-      );
     }
 
     // Get user's bookmarks with question details
@@ -50,7 +67,6 @@ export async function GET() {
 // POST /api/bookmarks - Add a bookmark
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerClient();
     const body = await request.json();
     const { questionId } = body;
 
@@ -58,21 +74,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
     }
 
+    // Try to get token from Authorization header first
+    const authHeader = request.headers.get('Authorization');
+    let supabase;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      // Create Supabase client with token from client
+      supabase = createClient(
+        config.supabase.url,
+        config.supabase.anonKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          global: {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          },
+        }
+      );
+    } else {
+      // Fall back to cookie-based auth (for server components)
+      supabase = await createServerClient();
+    }
+    
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('Auth failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user has bookmark permission
-    const { plan } = await usageService.getUserUsageWithPlan(supabase, user.id);
-    
-    if (!plan || !plan.allow_bookmarks) {
-      return NextResponse.json(
-        { error: 'Bookmarks are not available in your current plan' },
-        { status: 403 }
-      );
     }
 
     // Add bookmark
@@ -103,7 +137,6 @@ export async function POST(request: Request) {
 // DELETE /api/bookmarks - Remove a bookmark
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createServerClient();
     const body = await request.json();
     const { questionId } = body;
 
@@ -111,10 +144,38 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
     }
 
+    // Try to get token from Authorization header first
+    const authHeader = request.headers.get('Authorization');
+    let supabase;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      // Create Supabase client with token from client
+      supabase = createClient(
+        config.supabase.url,
+        config.supabase.anonKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          global: {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          },
+        }
+      );
+    } else {
+      // Fall back to cookie-based auth (for server components)
+      supabase = await createServerClient();
+    }
+    
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('Auth failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

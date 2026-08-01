@@ -125,7 +125,7 @@ export async function POST(request: Request) {
         earnedMarks += Number(question.marks);
       } else {
         wrongAnswers++;
-        negativeMarks += Number(question.negative_marks);
+        negativeMarks += Number(question.negative_marks || 0);
       }
 
       userAnswers.push({
@@ -194,6 +194,8 @@ export async function POST(request: Request) {
           error: "Failed to save test result",
           databaseError: updateError.message,
           code: updateError.code,
+          details: updateError.details,
+          hint: updateError.hint,
         },
         { status: 500 }
       );

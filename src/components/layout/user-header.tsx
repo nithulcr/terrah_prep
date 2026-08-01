@@ -10,13 +10,14 @@ import {
   User, 
   LogOut,
   Menu,
-  X
+  X,
+  Bookmark
 } from 'lucide-react';
 
 export const UserHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile, loading } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -25,9 +26,12 @@ export const UserHeader: React.FC = () => {
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
+  // Show bookmarks link for ALL users (including free plan)
+  // The bookmarks page will handle plan restrictions
   const userNavLinks = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/mock-tests', label: 'Mock Tests' },
+    { href: '/bookmarks', label: 'Bookmarks' }, // Show for all users
     { href: '/pricing', label: 'Pricing' },
   ];
 
@@ -37,7 +41,7 @@ export const UserHeader: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Terrah Prep" className="w-[180px] h-auto" />
+            <img src="/logo2.png" alt="Terrah Prep" className="w-[220px] h-auto" />
           </Link>
 
           {/* Desktop Navigation */}

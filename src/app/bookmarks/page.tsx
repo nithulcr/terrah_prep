@@ -45,11 +45,30 @@ export default function BookmarksPage() {
   const loadBookmarks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/bookmarks');
+      
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch('/api/bookmarks', {
+        headers,
+      });
 
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error || 'Failed to load bookmarks');
+        if (response.status === 403) {
+          // User doesn't have bookmarks feature in their plan
+          setError('Bookmarks are not available in your current plan. Please upgrade to access this feature.');
+        } else {
+          setError(data.error || 'Failed to load bookmarks');
+        }
         setLoading(false);
         return;
       }
@@ -65,11 +84,20 @@ export default function BookmarksPage() {
 
   const removeBookmark = async (questionId: number) => {
     try {
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
       const response = await fetch('/api/bookmarks', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ questionId }),
       });
 

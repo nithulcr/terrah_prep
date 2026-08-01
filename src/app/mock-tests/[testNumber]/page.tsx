@@ -27,6 +27,7 @@ export default function MockTestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [testResultId, setTestResultId] = useState<number | null>(null);
   const [isResuming, setIsResuming] = useState(false);
@@ -34,6 +35,78 @@ export default function MockTestPage() {
   const [reviewFlags, setReviewFlags] = useState<number[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [testDuration, setTestDuration] = useState<number>(90); // Default 90 minutes
+
+  // Function to add bookmark to database
+  const addBookmarkToDatabase = async (questionId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Please login to bookmark questions');
+        return;
+      }
+
+      const response = await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ questionId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Failed to add bookmark:', data.error);
+        // Revert local state on failure
+        setBookmarks((all) => all.filter(id => id !== questionId));
+      }
+    } catch (err) {
+      console.error('Error adding bookmark:', err);
+      // Revert local state on failure
+      setBookmarks((all) => all.filter(id => id !== questionId));
+    }
+  };
+
+  // Function to remove bookmark from database
+  const removeBookmarkFromDatabase = async (questionId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Please login to manage bookmarks');
+        return;
+      }
+
+      const response = await fetch('/api/bookmarks', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ questionId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Failed to remove bookmark:', data.error);
+        // Revert local state on failure
+        setBookmarks((all) => [...all, questionId]);
+      }
+    } catch (err) {
+      console.error('Error removing bookmark:', err);
+      // Revert local state on failure
+      setBookmarks((all) => [...all, questionId]);
+    }
+  };
+
+  // Auto-redirect on error disabled for debugging
+  // useEffect(() => {
+  //   if (error) {
+  //     const timer = setTimeout(() => {
+  //       window.location.href = '/mock-tests';
+  //     }, 3000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [error]);
 
   useEffect(() => {
     if (!batchId || !testNumber) {
@@ -157,6 +230,7 @@ export default function MockTestPage() {
 
       if (!response.ok) {
         setError(data.error || 'Failed to submit test');
+        setErrorDetails(data);
         return;
       }
 
@@ -179,21 +253,32 @@ export default function MockTestPage() {
   }
 
   if (error) {
-    // Auto-redirect on error after 3 seconds
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        window.location.href = '/mock-tests';
-      }, 3000);
-      return () => clearTimeout(timer);
-    }, [error]);
-
     return <main className="mx-auto max-w-2xl p-6">
       <Card>
         <CardBody className="p-8 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-red-600" />
           <h1 className="mt-3 text-2xl font-bold">Error</h1>
           <p className="mt-3 text-slate-600">{error}</p>
-          <p className="mt-2 text-sm text-red-600">Redirecting to mock tests in 3 seconds...</p>
+          
+          {/* Show detailed error information */}
+          {errorDetails && (
+            <div className="mt-4 rounded-lg bg-red-50 p-4 text-left">
+              <p className="text-sm font-semibold text-red-900">Error Details:</p>
+              {errorDetails.databaseError && (
+                <p className="mt-1 text-xs text-red-700">Database Error: {errorDetails.databaseError}</p>
+              )}
+              {errorDetails.code && (
+                <p className="mt-1 text-xs text-red-700">Error Code: {errorDetails.code}</p>
+              )}
+              {errorDetails.hint && (
+                <p className="mt-1 text-xs text-red-700">Hint: {errorDetails.hint}</p>
+              )}
+              <p className="mt-2 text-xs text-red-600">
+                Check browser console (F12) for complete error logs
+              </p>
+            </div>
+          )}
+          
           <Link href="/mock-tests">
             <Button className="mt-6">Back to Mock Tests</Button>
           </Link>
@@ -410,9 +495,13 @@ export default function MockTestPage() {
             size="sm"
             onClick={() => {
               if (bookmarks.includes(question.id)) {
+                // Remove bookmark
                 setBookmarks(bookmarks.filter(id => id !== question.id));
+                removeBookmarkFromDatabase(question.id);
               } else {
+                // Add bookmark
                 setBookmarks([...bookmarks, question.id]);
+                addBookmarkToDatabase(question.id);
               }
             }}
           >
