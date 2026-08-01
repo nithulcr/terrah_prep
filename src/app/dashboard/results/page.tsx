@@ -6,7 +6,7 @@ import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { TestResult, Question, UserAnswer } from '@/types';
 import { useAuth } from '@/lib/auth/use-auth';
-import { Trophy, Calendar, TrendingUp, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Calendar, TrendingUp, Trash2, ChevronDown, ChevronUp, Flag } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
 
 export default function ResultsPage() {
@@ -279,71 +279,98 @@ export default function ResultsPage() {
                     {expandedResults.has(result.id) && (
                       <div className="mt-4 space-y-4">
                         {(result as any).questions && (result as any).questions.length > 0 ? (
-                          (result as any).questions.map((userAnswer: UserAnswer & { question: Question }, index: number) => {
-                            const question = userAnswer.question;
-                            const selectedOption = userAnswer.selected_option;
-                            const isCorrect = userAnswer.is_correct;
-                            const correctOption = question.correct_option;
-
-                            return (
-                              <Card key={userAnswer.id || index} className="border border-slate-200">
+                          <>
+                            {/* Flagged Questions Section */}
+                            {(result as any).flaggedQuestions && (result as any).flaggedQuestions.length > 0 && (
+                              <Card className="border-red-200 bg-red-50">
                                 <CardBody className="p-4">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Badge variant="info">
-                                          Q{index + 1}
-                                        </Badge>
-                                        <Badge variant="info">
-                                          {question.category?.name || 'General'}
-                                        </Badge>
-                                        {isCorrect ? (
-                                          <Badge variant="success">Correct</Badge>
-                                        ) : selectedOption ? (
-                                          <Badge variant="danger">Wrong</Badge>
-                                        ) : (
-                                          <Badge variant="warning">Skipped</Badge>
-                                        )}
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Flag className="h-5 w-5 text-red-600" />
+                                    <h4 className="font-semibold text-red-900">
+                                      Flagged for Review ({(result as any).flaggedQuestions.length})
+                                    </h4>
+                                  </div>
+                                  <p className="text-sm text-red-700 mb-3">
+                                    These questions were marked for review during the test
+                                  </p>
+                                  <div className="space-y-2">
+                                    {(result as any).flaggedQuestions.map((q: Question, idx: number) => (
+                                      <div key={q.id} className="bg-white rounded-lg p-3 border border-red-200">
+                                        <p className="text-sm font-medium text-slate-900">{q.question}</p>
                                       </div>
-                                      <p className="text-slate-900 font-medium">{question.question}</p>
-                                      
-                                      <div className="mt-3 space-y-2">
-                                        {['A', 'B', 'C', 'D'].map((option) => {
-                                          const optionText = question[`option_${option.toLowerCase()}` as keyof Question] as string;
-                                          const isSelected = selectedOption === option;
-                                          const isCorrectOption = correctOption === option;
-
-                                          return (
-                                            <div
-                                              key={option}
-                                              className={`rounded border p-2 ${
-                                                isCorrectOption
-                                                  ? 'border-green-500 bg-green-50'
-                                                  : isSelected
-                                                  ? 'border-red-500 bg-red-50'
-                                                  : 'border-slate-200'
-                                              }`}
-                                            >
-                                              <span className="font-semibold">{option}.</span> {optionText}
-                                              {isCorrectOption && <span className="ml-2 text-green-600">✓ Correct</span>}
-                                              {isSelected && !isCorrectOption && <span className="ml-2 text-red-600">✗ Your Answer</span>}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {question.explanation && (
-                                        <div className="mt-3 rounded-lg bg-blue-50 p-3">
-                                          <p className="text-sm font-semibold text-blue-900">Explanation:</p>
-                                          <p className="text-sm text-blue-800">{question.explanation}</p>
-                                        </div>
-                                      )}
-                                    </div>
+                                    ))}
                                   </div>
                                 </CardBody>
                               </Card>
-                            );
-                          })
+                            )}
+
+                            {/* All Questions */}
+                            {(result as any).questions.map((userAnswer: UserAnswer & { question: Question }, index: number) => {
+                              const question = userAnswer.question;
+                              const selectedOption = userAnswer.selected_option;
+                              const isCorrect = userAnswer.is_correct;
+                              const correctOption = question.correct_option;
+
+                              return (
+                                <Card key={userAnswer.id || index} className="border border-slate-200">
+                                  <CardBody className="p-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge variant="info">
+                                            Q{index + 1}
+                                          </Badge>
+                                          <Badge variant="info">
+                                            {question.category?.name || 'General'}
+                                          </Badge>
+                                          {isCorrect ? (
+                                            <Badge variant="success">Correct</Badge>
+                                          ) : selectedOption ? (
+                                            <Badge variant="danger">Wrong</Badge>
+                                          ) : (
+                                            <Badge variant="warning">Skipped</Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-slate-900 font-medium">{question.question}</p>
+                                        
+                                        <div className="mt-3 space-y-2">
+                                          {['A', 'B', 'C', 'D'].map((option) => {
+                                            const optionText = question[`option_${option.toLowerCase()}` as keyof Question] as string;
+                                            const isSelected = selectedOption === option;
+                                            const isCorrectOption = correctOption === option;
+
+                                            return (
+                                              <div
+                                                key={option}
+                                                className={`rounded border p-2 ${
+                                                  isCorrectOption
+                                                    ? 'border-green-500 bg-green-50'
+                                                    : isSelected
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-slate-200'
+                                                }`}
+                                              >
+                                                <span className="font-semibold">{option}.</span> {optionText}
+                                                {isCorrectOption && <span className="ml-2 text-green-600">✓ Correct</span>}
+                                                {isSelected && !isCorrectOption && <span className="ml-2 text-red-600">✗ Your Answer</span>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+
+                                        {question.explanation && (
+                                          <div className="mt-3 rounded-lg bg-blue-50 p-3">
+                                            <p className="text-sm font-semibold text-blue-900">Explanation:</p>
+                                            <p className="text-sm text-blue-800">{question.explanation}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CardBody>
+                                </Card>
+                              );
+                            })}
+                          </>
                         ) : (
                           <Card className="border border-slate-200">
                             <CardBody className="p-6 text-center">

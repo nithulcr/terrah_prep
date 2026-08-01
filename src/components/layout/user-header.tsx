@@ -11,7 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bookmark
+  Bookmark,
+  Flag
 } from 'lucide-react';
 
 export const UserHeader: React.FC = () => {
@@ -27,7 +28,7 @@ export const UserHeader: React.FC = () => {
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
   // Show bookmarks link for ALL users (including free plan)
-  // The bookmarks page will handle plan restrictions
+  // The bookmarks page will handle plan restrictions if needed
   const userNavLinks = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/mock-tests', label: 'Mock Tests' },

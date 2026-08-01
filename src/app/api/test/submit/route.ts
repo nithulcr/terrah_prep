@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '@/lib/config';
 import { usageService } from '@/lib/services/usage.service';
+import { TEST_CONFIG } from '@/config/testConfig';
 
 export async function POST(request: Request) {
   try {
@@ -125,7 +126,8 @@ export async function POST(request: Request) {
         earnedMarks += Number(question.marks);
       } else {
         wrongAnswers++;
-        negativeMarks += Number(question.negative_marks || 0);
+        // Use centralized negative mark from TEST_CONFIG
+        negativeMarks += TEST_CONFIG.NEGATIVE_MARK;
       }
 
       userAnswers.push({
@@ -157,9 +159,32 @@ export async function POST(request: Request) {
     // Update test result with scores and mark as completed
     console.log('SUBMIT API - Updating test result:', { testResultId });
     
-    const { data: updatedTestResult, error: updateError } = await supabase
+    // First try to update with earned_marks and final_marks
+    let updateData: any = {
+      score: correctAnswers,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      wrong_answers: wrongAnswers,
+      skipped_answers: skippedAnswers,
+      time_taken_seconds: timeTakenSeconds || 0,
+      negative_marks: negativeMarks,
+      earned_marks: earnedMarks,
+      final_marks: finalMarks,
+      percentage,
+      completed_at: new Date().toISOString(), // Mark as completed
+    };
+
+    let { data: updatedTestResult, error: updateError } = await supabase
       .from('test_results')
-      .update({
+      .update(updateData)
+      .eq('id', testResultId)
+      .select()
+      .single();
+
+    // If update fails due to missing columns, retry without earned_marks and final_marks
+    if (updateError && (updateError.message?.includes('earned_marks') || updateError.message?.includes('final_marks'))) {
+      console.warn('Migration not complete, retrying without earned_marks and final_marks');
+      updateData = {
         score: correctAnswers,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,
@@ -168,11 +193,19 @@ export async function POST(request: Request) {
         time_taken_seconds: timeTakenSeconds || 0,
         negative_marks: negativeMarks,
         percentage,
-        completed_at: new Date().toISOString(), // Mark as completed
-      })
-      .eq('id', testResultId)
-      .select()
-      .single();
+        completed_at: new Date().toISOString(),
+      };
+      
+      const retryResult = await supabase
+        .from('test_results')
+        .update(updateData)
+        .eq('id', testResultId)
+        .select()
+        .single();
+      
+      updatedTestResult = retryResult.data;
+      updateError = retryResult.error;
+    }
 
     console.log('SUBMIT API - Update result:', {
       updatedTestResult,
@@ -257,6 +290,9 @@ export async function POST(request: Request) {
         timeTakenSeconds: timeTakenSeconds || 0,
         percentage,
         questions: userAnswersWithQuestions,
+        flaggedQuestions: userAnswersWithQuestions
+          .filter((ua: any) => ua.is_correct === false && ua.selected_option !== null)
+          .map((ua: any) => ua.question),
       },
     });
   } catch (error) {

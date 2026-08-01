@@ -132,6 +132,8 @@ export interface TestResult {
   skipped_answers: number;
   time_taken_seconds: number;
   negative_marks: number;
+  earned_marks: number;
+  final_marks: number;
   percentage: number;
   created_at: string;
   updated_at: string;

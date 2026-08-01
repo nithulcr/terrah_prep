@@ -6,8 +6,10 @@ import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
-import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock, Menu } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
+import FlaggedQuestionsModal from '@/components/test/flagged-questions-modal';
+import QuestionPalette from '@/components/test/question-palette';
 
 export default function MockTestPage() {
 
@@ -35,6 +37,8 @@ export default function MockTestPage() {
   const [reviewFlags, setReviewFlags] = useState<number[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [testDuration, setTestDuration] = useState<number>(90); // Default 90 minutes
+  const [showFlaggedModal, setShowFlaggedModal] = useState(false);
+  const [showQuestionPalette, setShowQuestionPalette] = useState(false);
 
   // Function to add bookmark to database
   const addBookmarkToDatabase = async (questionId: number) => {
@@ -452,6 +456,34 @@ export default function MockTestPage() {
       </div>
     </div>
 
+    {/* Flagged Questions Modal */}
+    <FlaggedQuestionsModal
+      isOpen={showFlaggedModal}
+      onClose={() => setShowFlaggedModal(false)}
+      flaggedIds={reviewFlags}
+      questions={questions}
+      currentIndex={index}
+      onNavigate={(newIndex) => setIndex(newIndex)}
+      selectedAnswers={answers}
+      onAnswerSelect={(questionId, answer) => {
+        if (answer) {
+          setAnswers((all) => ({ ...all, [questionId]: answer }));
+        }
+      }}
+    />
+
+    {/* Question Palette */}
+    <QuestionPalette
+      isOpen={showQuestionPalette}
+      onClose={() => setShowQuestionPalette(false)}
+      questions={questions}
+      currentIndex={index}
+      onNavigate={(newIndex) => setIndex(newIndex)}
+      answeredQuestions={new Set(Object.keys(answers).map(Number))}
+      flaggedQuestions={reviewFlags}
+      selectedAnswers={answers}
+    />
+
     <div className="mb-5 flex justify-between">
       <Badge>{question.category?.name ?? 'Question'}</Badge>
       <span>{index + 1} / {questions.length}</span>
@@ -489,7 +521,7 @@ export default function MockTestPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -513,14 +545,34 @@ export default function MockTestPage() {
             size="sm"
             onClick={() => {
               if (reviewFlags.includes(question.id)) {
+                // Remove flag
                 setReviewFlags(reviewFlags.filter(id => id !== question.id));
               } else {
+                // Add flag
                 setReviewFlags([...reviewFlags, question.id]);
               }
             }}
           >
             <Flag className={`mr-1 h-4 w-4 ${reviewFlags.includes(question.id) ? 'fill-current text-red-600' : ''}`} />
             {reviewFlags.includes(question.id) ? 'Flagged' : 'Flag for Review'}
+          </Button>
+          {reviewFlags.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFlaggedModal(true)}
+            >
+              <Flag className="mr-1 h-4 w-4" />
+              View Flagged ({reviewFlags.length})
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowQuestionPalette(true)}
+          >
+            <Menu className="mr-1 h-4 w-4" />
+            Question Palette
           </Button>
         </div>
 
