@@ -316,7 +316,7 @@ export const Hero = () => {
                    
 
                     <div className="relative z-10 max-w-5xl text-center mx-auto pb-28">
-                        <Image ref={icon3Ref} src="/logo.png" alt="icon" width={250} height={80} className="w-[250px] h-auto mx-auto pb-5" />
+                       
                         <h2 ref={headline3Ref} className="max-w-4xl mx-auto text-4xl md:text-6xl font-bold leading-tight ">
                            Master Your Exam With<br /><span className="text-gradient text-5xl md:text-8xl text-gradient mt-[-10px] block ml-auto mr-auto">Rank Path</span>
                         </h2>

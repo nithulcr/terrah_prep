@@ -123,10 +123,9 @@ export async function POST(request: Request) {
         skippedAnswers++;
       } else if (isCorrect) {
         correctAnswers++;
-        earnedMarks += Number(question.marks);
+        earnedMarks++; // 1 mark for every correct answer
       } else {
         wrongAnswers++;
-        // Use centralized negative mark from TEST_CONFIG
         negativeMarks += TEST_CONFIG.NEGATIVE_MARK;
       }
 
@@ -140,7 +139,7 @@ export async function POST(request: Request) {
 
     const finalMarks = earnedMarks - negativeMarks;
     const totalQuestions = questions.length; // Use actual questions fetched, not questionIds count
-    
+
     console.log('SUBMIT API - Results Calculated:', {
       totalQuestions,
       correctAnswers,
@@ -158,7 +157,7 @@ export async function POST(request: Request) {
 
     // Update test result with scores and mark as completed
     console.log('SUBMIT API - Updating test result:', { testResultId });
-    
+
     // First try to update with earned_marks and final_marks
     let updateData: any = {
       score: correctAnswers,
@@ -195,14 +194,14 @@ export async function POST(request: Request) {
         percentage,
         completed_at: new Date().toISOString(),
       };
-      
+
       const retryResult = await supabase
         .from('test_results')
         .update(updateData)
         .eq('id', testResultId)
         .select()
         .single();
-      
+
       updatedTestResult = retryResult.data;
       updateError = retryResult.error;
     }

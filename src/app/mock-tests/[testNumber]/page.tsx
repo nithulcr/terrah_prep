@@ -340,12 +340,19 @@ export default function MockTestPage() {
     return <main className="mx-auto max-w-4xl p-6">
       <Card>
         <CardBody className="p-8">
-          <div className="mb-8 text-center">
+          {/* Header Section */}
+          <div className="mb-8 rounded-lg bg-gradient-to-r from-blue-50 via-white to-violet-50 p-6 text-center">
             <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
-            <h1 className="mt-4 text-3xl font-bold">Test Complete!</h1>
-            <p className="mt-2 text-slate-600">Test {testNumber}</p>
+            <h1 className="mt-4 text-3xl font-bold text-slate-900">Test Complete!</h1>
+            <p className="mt-2 text-lg text-slate-600">Test {testNumber}</p>
+            {(result as any).batch?.batch_name && (
+              <p className="mt-1 text-sm text-slate-500">
+                {(result as any).batch.batch_name}
+              </p>
+            )}
           </div>
 
+          {/* Score and Answer Stats */}
           <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="rounded-lg bg-blue-50 p-4 text-center">
               <p className="text-sm text-slate-600">Score</p>
@@ -365,18 +372,25 @@ export default function MockTestPage() {
             </div>
           </div>
 
+          {/* Marks Section */}
           <div className="mb-8 grid grid-cols-3 gap-4">
             <div className="rounded-lg bg-emerald-50 p-4 text-center">
               <p className="text-sm text-slate-600">Earned Marks</p>
-              <p className="text-3xl font-bold text-emerald-600">{result.earnedMarks}</p>
+              <p className="text-3xl font-bold text-emerald-600">
+                {typeof result.earnedMarks === 'number' ? result.earnedMarks.toFixed(2) : '0.00'}
+              </p>
             </div>
             <div className="rounded-lg bg-orange-50 p-4 text-center">
               <p className="text-sm text-slate-600">Negative Marks</p>
-              <p className="text-3xl font-bold text-orange-600">{result.negativeMarks}</p>
+              <p className="text-3xl font-bold text-orange-600">
+                {typeof result.negativeMarks === 'number' ? result.negativeMarks.toFixed(2) : '0.00'}
+              </p>
             </div>
             <div className="rounded-lg bg-purple-50 p-4 text-center">
               <p className="text-sm text-slate-600">Final Marks</p>
-              <p className="text-3xl font-bold text-purple-600">{result.finalMarks}</p>
+              <p className="text-3xl font-bold text-purple-600">
+                {typeof result.finalMarks === 'number' ? result.finalMarks.toFixed(2) : '0.00'}
+              </p>
             </div>
           </div>
 

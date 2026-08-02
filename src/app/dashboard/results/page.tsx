@@ -131,18 +131,18 @@ export default function ResultsPage() {
   return (
     <UserLayout>
       <main className="min-h-screen bg-slate-50">
+      {/* Header Section */}
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-                Test Results
-              </h1>
-              <p className="mt-3 text-lg text-slate-600">
-                Track your performance and progress
-              </p>
-            </div>
-            <div className="flex gap-2">
+          <div className="text-center">
+            <Trophy className="mx-auto h-12 w-12 text-blue-600" />
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Test Results
+            </h1>
+            <p className="mt-3 text-lg text-slate-600">
+              Track your performance and progress
+            </p>
+            <div className="mt-4 flex justify-center gap-2">
               <Button
                 variant={filter === 'recent' ? 'primary' : 'outline'}
                 onClick={() => setFilter('recent')}
@@ -223,7 +223,7 @@ export default function ResultsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-4 gap-4">
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="rounded-lg bg-green-50 p-3 text-center">
                       <p className="text-xs text-slate-600">Correct</p>
                       <p className="text-lg font-bold text-green-600">
@@ -245,7 +245,29 @@ export default function ResultsPage() {
                     <div className="rounded-lg bg-yellow-50 p-3 text-center">
                       <p className="text-xs text-slate-600">Negative</p>
                       <p className="text-lg font-bold text-yellow-600">
-                        {result.negative_marks}
+                        {typeof result.negative_marks === 'number' ? result.negative_marks.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Marks Section */}
+                  <div className="mt-4 grid grid-cols-3 gap-4">
+                    <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                      <p className="text-xs text-slate-600">Earned Marks</p>
+                      <p className="text-lg font-bold text-emerald-600">
+                        {typeof result.earned_marks === 'number' ? result.earned_marks.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-orange-50 p-3 text-center">
+                      <p className="text-xs text-slate-600">Negative Marks</p>
+                      <p className="text-lg font-bold text-orange-600">
+                        {typeof result.negative_marks === 'number' ? result.negative_marks.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-purple-50 p-3 text-center">
+                      <p className="text-xs text-slate-600">Final Marks</p>
+                      <p className="text-lg font-bold text-purple-600">
+                        {typeof result.final_marks === 'number' ? result.final_marks.toFixed(2) : '0.00'}
                       </p>
                     </div>
                   </div>

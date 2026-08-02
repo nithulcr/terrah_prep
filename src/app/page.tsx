@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { Header } from '@/components/layout';
 import { Hero } from "@/components/hero";
-import WhoWeAre from "@/components/WhoWeAre";
+
 
 import { Values } from "@/components/values";
 
@@ -54,7 +54,7 @@ export default function HomePage() {
     <div className="flex flex-col">
       <Header />
       <Hero />
-      <WhoWeAre />
+    
 
       <Values />
 
