@@ -107,16 +107,6 @@ export default function DashboardPage() {
     return diffDays;
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-50 pt-20">
-        <div className="flex items-center justify-center py-20">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <UserLayout>
       <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
@@ -130,7 +120,9 @@ export default function DashboardPage() {
                 Track your progress and continue your preparation
               </p>
             </div>
-            {plan && (
+            {loading ? (
+              <div className="h-8 bg-slate-200 rounded animate-pulse w-24"></div>
+            ) : plan && (
               <Badge variant="warning" className="text-sm">
                 {plan.name}
               </Badge>
@@ -140,8 +132,26 @@ export default function DashboardPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        {loading ? (
+          /* Stats Grid Skeleton */
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="border border-slate-200 shadow-sm">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-200 rounded animate-pulse w-20"></div>
+                      <div className="h-8 bg-slate-200 rounded animate-pulse w-16"></div>
+                    </div>
+                    <div className="h-12 w-12 bg-slate-200 rounded-lg animate-pulse"></div>
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          /* Stats Grid */
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="border border-slate-200 shadow-sm">
             <CardBody className="p-6">
               <div className="flex items-center justify-between">
@@ -222,6 +232,8 @@ export default function DashboardPage() {
             </CardBody>
           </Card>
         </div>
+
+        )}
 
         {/* Quick Actions */}
         <div className="grid gap-6 md:grid-cols-2">
