@@ -25,55 +25,38 @@ export const Header: React.FC = () => {
     { href: '/', label: 'Home' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/mock-tests', label: 'Mock Tests' },
+    { href: '/bookmarks', label: 'Bookmarks' },
+
   ];
 
   return (
     <header className="fixed w-full shadow-sm header py-3 top-0 z-50 ">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-9 relative">
-        <div className="flex justify-between items-center h-16">
+      <div className="max-w-[1400px] mx-auto  z-9 relative">
+        <div className="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <img src="/logo.png" alt="RankPath" className="w-[200px] md:w-[260px] h-auto" />
           </Link>
 
-          {/* Desktop Navigation */}
-          {/* <nav className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm font-medium transition-colors ${
-                  isActive(link.href)
-                    ? 'text-blue-600'
-                    : 'text-gray-700 hover:text-blue-600'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav> */}
+
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
-                <Link href="/dashboard">
-                  <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                </Link>
+
+                <AnimatedButton href="/dashboard" label=" Dashboard" className="w-fit" />
+
+
+                <AnimatedButton onClick={handleSignOut} label="Sign Out" className="w-fit btn-2" />
                 {profile?.role === 'admin' && (
                   <Link href="/admin">
-                    <Button variant="outline" size="sm">
+                    <Button variant="primary" size="md" className="uppercase">
                       Admin
                     </Button>
                   </Link>
                 )}
-                <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+
               </div>
             ) : (
               <div className="flex items-center space-x-3">
@@ -102,30 +85,32 @@ export const Header: React.FC = () => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
+          <div className="md:hidden py-4 border-t border-gray-200 bg-black px-4">
             <nav className="flex flex-col space-y-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive(link.href)
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-100/10 text-blue-600'
+                    : 'text-gray-300 hover:bg-gray-50'
                     }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-3 border-t border-gray-200 space-y-2">
+              <div className="pt-3 border-t border-gray-200 flex gap-2 flex-wrap">
                 {user ? (
                   <>
-                    <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start">
-                        <User className="h-4 w-4 mr-2" />
-                        Dashboard
-                      </Button>
-                    </Link>
+
+
+                    <AnimatedButton href="/dashboard" label=" Dashboard" className="w-fit" />
+                    <AnimatedButton onClick={() => {
+                      handleSignOut();
+                      setIsMobileMenuOpen(false);
+                    }} label=" Sign Out" className="w-fit btn-2" />
+
                     {profile?.role === 'admin' && (
                       <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button variant="outline" className="w-full">
@@ -133,17 +118,7 @@ export const Header: React.FC = () => {
                         </Button>
                       </Link>
                     )}
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        handleSignOut();
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </Button>
+
                   </>
                 ) : (
                   <>
