@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { Card, CardBody, Button, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
-import { Check, Crown } from 'lucide-react';
+import { Check, X, Crown, Star } from 'lucide-react';
 import { Plan } from '@/types';
+import { sortPlans, enhancePlan, isElitePlan, isFreePlan, PlanWithFeatures } from '@/lib/utils/planHelpers';
 import UserLayout from '@/app/user-layout';
 
 export default function PricingPage() {
   const { user } = useAuth();
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<PlanWithFeatures[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
 
@@ -27,7 +28,10 @@ export default function PricingPage() {
         .order('price');
 
       if (plansData) {
-        setPlans(plansData);
+        // Sort plans in the desired order and enhance with features
+        const sortedPlans = sortPlans(plansData);
+        const enhancedPlans = sortedPlans.map(plan => enhancePlan(plan));
+        setPlans(enhancedPlans);
       }
 
       // Load user's current plan from profile (single source of truth)
@@ -93,27 +97,45 @@ export default function PricingPage() {
             </CardBody>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-x-6 gap-y-10  lg:grid-cols-3">
             {plans.map((plan) => {
               const isCurrentPlan = currentPlan === plan.slug;
+              const isElite = isElitePlan(plan);
+              const isPremium = plan.slug.toLowerCase() === 'premium';
               
               return (
                 <Card 
                   key={plan.id} 
-                  className={`border-2 ${
+                  className={`flex flex-col border-2 ${
                     isCurrentPlan 
                       ? 'border-blue-500 shadow-lg' 
+                      : isPremium 
+                      ? 'border-purple-500 shadow-md' 
                       : 'border-slate-200 shadow-sm'
                   }`}
                 >
-                  <CardBody className="p-6">
+                  <CardBody className="flex flex-col flex-1 p-6 relative">
                     {isCurrentPlan && (
-                      <Badge variant="success" className="mb-3">
+                      <Badge variant="success" className="absolute top-[-15px] left-[20px]" >
                         Current Plan
                       </Badge>
                     )}
                     
-                    <h3 className="text-xl font-semibold text-slate-900">
+                    {isElite && !isCurrentPlan && (
+                      <Badge variant="warning" className="absolute top-[-15px] left-[20px]">
+                        <Star className="mr-1 h-3 w-3" />
+                        Most Popular
+                      </Badge>
+                    )}
+                    
+                    {isPremium && !isCurrentPlan && (
+                      <Badge variant="info" className="absolute top-[-15px] left-[20px]">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Best Value
+                      </Badge>
+                    )}
+                    
+                    <h3 className="text-2xl md:text-3xl font-bold text-slate-900">
                       {plan.name}
                     </h3>
                     
@@ -121,94 +143,57 @@ export default function PricingPage() {
                       {plan.description || 'No description'}
                     </p>
 
-                    <div className="mt-4">
+                    <div className="mt-4 ">
                       <span className="text-3xl font-bold text-slate-900">
                         ₹{plan.price}
                       </span>
                       <span className="text-slate-600">
-                        /{plan.duration_days} days
+                        / {plan.displayDuration}
                       </span>
                     </div>
 
-                    <div className="mt-6 space-y-3">
+                    <div className="mt-6 flex-1 space-y-3">
+                      {/* Lifetime Questions - always show */}
                       <div className="flex items-center text-sm">
                         <Check className="mr-2 h-4 w-4 text-green-600" />
-                        <span>
-                          {plan.daily_question_limit === null || plan.daily_question_limit === 0
-                            ? 'Unlimited'
-                            : plan.daily_question_limit
-                          } questions/day
-                        </span>
+                        <span>{plan.displayLifetimeQuestions}</span>
                       </div>
-                      
+
+                      {/* Questions per Day - always show */}
                       <div className="flex items-center text-sm">
-                        <Check className="mr-2 h-4 w-4 text-green-600" />
-                        <span>
-                          {plan.monthly_mock_test_limit === null || plan.monthly_mock_test_limit === 0
-                            ? 'Unlimited'
-                            : plan.monthly_mock_test_limit
-                          } mock tests/month
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm">
-                        <Check className="mr-2 h-4 w-4 text-green-600" />
-                        <span>
-                          {plan.lifetime_question_limit === null || plan.lifetime_question_limit === 0
-                            ? 'Unlimited'
-                            : plan.lifetime_question_limit
-                          } lifetime questions
+                        {plan.daily_question_limit && plan.daily_question_limit > 0 ? (
+                          <Check className="mr-2 h-4 w-4 text-green-600" />
+                        ) : (
+                          <X className="mr-2 h-4 w-4 text-red-500" />
+                        )}
+                        <span className={!plan.daily_question_limit || plan.daily_question_limit === 0 ? 'opacity-40' : ''}>
+                          {plan.displayQuestionsPerDay}
                         </span>
                       </div>
 
-                      {plan.allow_result_history && (
-                        <div className="flex items-center text-sm">
+                      {/* Mock Tests per Month - always show */}
+                      <div className="flex items-center text-sm">
+                        {plan.monthly_mock_test_limit && plan.monthly_mock_test_limit > 0 ? (
                           <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>View Results History</span>
-                        </div>
-                      )}
+                        ) : (
+                          <X className="mr-2 h-4 w-4 text-red-500" />
+                        )}
+                        <span className={!plan.monthly_mock_test_limit || plan.monthly_mock_test_limit === 0 ? 'opacity-40' : ''}>
+                          {plan.displayMockTestsPerMonth}
+                        </span>
+                      </div>
 
-                      {plan.allow_pdf_download && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>PDF Download</span>
+                      {/* Dynamic features from helper function - all features with check or X */}
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className={`flex items-center text-sm ${!feature.available ? 'opacity-40' : ''}`}>
+                          {feature.available ? (
+                            <Check className="mr-2 h-4 w-4 text-green-600" />
+                          ) : (
+                            <X className="mr-2 h-4 w-4 text-red-500" />
+                          )}
+                          <span>{feature.name}</span>
                         </div>
-                      )}
-
-                      {plan.allow_analytics && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>Analytics Dashboard</span>
-                        </div>
-                      )}
-
-                      {plan.allow_bookmarks && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>Bookmarks</span>
-                        </div>
-                      )}
-
-                      {plan.allow_review_answers && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>Review Answers</span>
-                        </div>
-                      )}
-
-                      {plan.allow_performance_dashboard && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>Performance Dashboard</span>
-                        </div>
-                      )}
-
-                      {plan.priority_support && (
-                        <div className="flex items-center text-sm">
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          <span>Priority Support</span>
-                        </div>
-                      )}
+                      ))}
                     </div>
 
                     <Button

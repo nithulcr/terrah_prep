@@ -8,14 +8,24 @@ import { signIn } from '@/lib/auth/auth';
 import { useAuth } from '@/lib/auth/use-auth';
 import { supabase } from '@/lib/supabase/client';
 import { BookOpen, Mail, Lock } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, deviceLimitError, clearDeviceLimitError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { showError } = useToast();
+
+  // Show device limit error
+  useEffect(() => {
+    if (deviceLimitError) {
+      showError('Device Limit Reached', deviceLimitError);
+      clearDeviceLimitError();
+    }
+  }, [deviceLimitError, showError, clearDeviceLimitError]);
 
   // Redirect if already logged in - IMMEDIATE redirect
   useEffect(() => {

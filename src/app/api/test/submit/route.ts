@@ -74,6 +74,25 @@ export async function POST(request: Request) {
 
     const batchId = testResult.batch_id;
 
+    // Get user's profile to check plan permissions
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan_slug')
+      .eq('id', user.id)
+      .single();
+
+    // Get plan to check if review_answers is allowed
+    let canReviewAnswers = false;
+    if (profile?.plan_slug) {
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('allow_review_answers')
+        .eq('slug', profile.plan_slug)
+        .maybeSingle();
+      
+      canReviewAnswers = plan?.allow_review_answers || false;
+    }
+
     // Get batch details
     const { data: batch, error: batchError } = await supabase
       .from('batches')
@@ -244,19 +263,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create user answers
-    const answersToInsert = userAnswers.map((answer) => ({
-      test_result_id: testResultId,
-      ...answer,
-    }));
+    // Only save user answers if review_answers permission is enabled
+    if (canReviewAnswers) {
+      // Create user answers
+      const answersToInsert = userAnswers.map((answer) => ({
+        test_result_id: testResultId,
+        ...answer,
+      }));
 
-    const { error: answersError } = await supabase
-      .from('user_answers')
-      .insert(answersToInsert);
+      const { error: answersError } = await supabase
+        .from('user_answers')
+        .insert(answersToInsert);
 
-    if (answersError) {
-      console.error('Error saving user answers:', answersError);
-      // Continue anyway, test result is saved
+      if (answersError) {
+        console.error('Error saving user answers:', answersError);
+        // Continue anyway, test result is saved
+      }
+    } else {
+      console.log('Review answers not allowed for this plan, skipping user_answers insert');
     }
 
     // Increment usage counters
@@ -265,14 +289,17 @@ export async function POST(request: Request) {
       tests: 1,
     });
 
-    // Fetch user answers with questions for detailed results
-    const { data: userAnswersData, error: userAnswersError } = await supabase
-      .from('user_answers')
-      .select('*, question:questions(*, category:categories(*))')
-      .eq('test_result_id', testResultId)
-      .order('question_id', { ascending: true });
+    // Fetch user answers with questions for detailed results (only if permission granted)
+    let userAnswersWithQuestions: any[] = [];
+    if (canReviewAnswers) {
+      const { data: userAnswersData, error: userAnswersError } = await supabase
+        .from('user_answers')
+        .select('*, question:questions(*, category:categories(*))')
+        .eq('test_result_id', testResultId)
+        .order('question_id', { ascending: true });
 
-    const userAnswersWithQuestions = userAnswersData || [];
+      userAnswersWithQuestions = userAnswersData || [];
+    }
 
     return NextResponse.json({
       success: true,
@@ -292,6 +319,7 @@ export async function POST(request: Request) {
         flaggedQuestions: userAnswersWithQuestions
           .filter((ua: any) => ua.is_correct === false && ua.selected_option !== null)
           .map((ua: any) => ua.question),
+        canReviewAnswers, // Include permission flag in response
       },
     });
   } catch (error) {

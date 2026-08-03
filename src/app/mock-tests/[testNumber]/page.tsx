@@ -6,10 +6,11 @@ import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
-import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock, Menu } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock, Menu, Lock } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
 import FlaggedQuestionsModal from '@/components/test/flagged-questions-modal';
 import QuestionPalette from '@/components/test/question-palette';
+import { usePlanPermissions, getUpgradeMessage } from '@/lib/hooks/use-plan-permissions';
 
 export default function MockTestPage() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function MockTestPage() {
   const testNumber = Number(params.testNumber);
   const batchId = Number(searchParams.get("batchId"));
   const router = useRouter();
+  const { canBookmark, canReviewAnswers } = usePlanPermissions();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
@@ -34,6 +36,22 @@ export default function MockTestPage() {
   const [testDuration, setTestDuration] = useState<number>(90);
   const [showFlaggedModal, setShowFlaggedModal] = useState(false);
   const [showQuestionPalette, setShowQuestionPalette] = useState(false);
+
+  const handleBookmarkClick = (questionId: number) => {
+    if (!canBookmark) {
+      alert(getUpgradeMessage('bookmark'));
+      router.push('/pricing');
+      return;
+    }
+
+    if (bookmarks.includes(questionId)) {
+      setBookmarks(bookmarks.filter(id => id !== questionId));
+      removeBookmarkFromDatabase(questionId);
+    } else {
+      setBookmarks([...bookmarks, questionId]);
+      addBookmarkToDatabase(questionId);
+    }
+  };
 
   const addBookmarkToDatabase = async (questionId: number) => {
     try {
@@ -88,6 +106,19 @@ export default function MockTestPage() {
     } catch (err) {
       console.error('Error removing bookmark:', err);
       setBookmarks((all) => [...all, questionId]);
+    }
+  };
+
+  const handleFlagClick = (questionId: number) => {
+    if (!canReviewAnswers) {
+      alert('Flag Questions are available in PRO, ELITE and PREMIUM plans.');
+      return;
+    }
+
+    if (reviewFlags.includes(questionId)) {
+      setReviewFlags(reviewFlags.filter(id => id !== questionId));
+    } else {
+      setReviewFlags([...reviewFlags, questionId]);
     }
   };
 
@@ -371,18 +402,33 @@ export default function MockTestPage() {
               </div>
 
               <div className="flex gap-4">
-                <Link href="/dashboard/results" className="flex-1">
-                  <Button variant="outline" className="w-full">View Results</Button>
-                </Link>
-                <Link
-                  href={`/mock-tests/${testNumber}?batchId=${batchId}&retest=true`}
-                  className="flex-1"
-                >
-                  <Button variant="outline" className="w-full border-blue-500 text-blue-700 hover:bg-blue-50">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Retake Test
+                {canReviewAnswers ? (
+                  <Link href="/dashboard/results" className="flex-1">
+                    <Button variant="outline" className="w-full">View Results</Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" className="flex-1" disabled>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Review Answers (PRO Required)
                   </Button>
-                </Link>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1 border-blue-500 text-blue-700 hover:bg-blue-50"
+                  onClick={() => {
+                    // Reset and start new test
+                    setSubmitted(false);
+                    setResult(null);
+                    setTestResultId(null);
+                    setAnswers({});
+                    setIndex(0);
+                    setTimeRemaining(testDuration * 60);
+                    window.location.reload();
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retake Test
+                </Button>
                 <Link href="/mock-tests" className="flex-1">
                   <Button className="w-full">Back to Mock Tests</Button>
                 </Link>
@@ -516,32 +562,21 @@ export default function MockTestPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (bookmarks.includes(question.id)) {
-                        setBookmarks(bookmarks.filter(id => id !== question.id));
-                        removeBookmarkFromDatabase(question.id);
-                      } else {
-                        setBookmarks([...bookmarks, question.id]);
-                        addBookmarkToDatabase(question.id);
-                      }
-                    }}
+                    onClick={() => handleBookmarkClick(question.id)}
                   >
                     <Bookmark className={`mr-1 h-4 w-4 ${bookmarks.includes(question.id) ? 'fill-current text-yellow-600' : ''}`} />
                     {bookmarks.includes(question.id) ? 'Bookmarked' : 'Bookmark'}
+                    {!canBookmark && <Lock className="ml-1 h-3 w-3" />}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (reviewFlags.includes(question.id)) {
-                        setReviewFlags(reviewFlags.filter(id => id !== question.id));
-                      } else {
-                        setReviewFlags([...reviewFlags, question.id]);
-                      }
-                    }}
+                    onClick={() => handleFlagClick(question.id)}
+                    disabled={!canReviewAnswers}
                   >
                     <Flag className={`mr-1 h-4 w-4 ${reviewFlags.includes(question.id) ? 'fill-current text-red-600' : ''}`} />
                     {reviewFlags.includes(question.id) ? 'Flagged' : 'Flag for Review'}
+                    {!canReviewAnswers && <Lock className="ml-1 h-3 w-3" />}
                   </Button>
                   {reviewFlags.length > 0 && (
                     <Button

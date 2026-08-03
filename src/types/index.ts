@@ -31,10 +31,10 @@ export interface Plan {
   lifetime_question_limit: number | null;
   allow_result_history: boolean;
   allow_pdf_download: boolean;
-  allow_analytics: boolean;
   allow_bookmarks: boolean;
   allow_review_answers: boolean;
   allow_performance_dashboard: boolean;
+  allow_previous_year_questions: boolean;
   priority_support: boolean;
   is_active: boolean;
   created_at: string;

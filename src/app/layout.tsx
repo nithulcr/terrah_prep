@@ -6,6 +6,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { ScrollDetector } from "@/components/ScrollDetector";
 import { AuthProvider } from '@/lib/auth/auth-provider';
 import { SettingsProvider } from '@/lib/contexts/settings-context';
+import { ToastProvider } from '@/components/ui/toast-provider';
 
 const manrope = Manrope({ 
   subsets: ["latin"],
@@ -31,14 +32,16 @@ export default function RootLayout({
       <body className={`${manrope.variable} font-body`}>
         <ScrollDetector />
         <SmoothScroll>
-          <AuthProvider>
-            <SettingsProvider>
-              <main className="flex-grow">
-                {children}
-              </main>
-              <Footer />
-            </SettingsProvider>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <SettingsProvider>
+                <main className="flex-grow">
+                  {children}
+                </main>
+                <Footer />
+              </SettingsProvider>
+            </AuthProvider>
+          </ToastProvider>
         </SmoothScroll>
       </body>
     </html>

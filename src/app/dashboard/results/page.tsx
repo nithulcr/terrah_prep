@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { TestResult, Question, UserAnswer } from '@/types';
 import { useAuth } from '@/lib/auth/use-auth';
-import { Trophy, Calendar, TrendingUp, Trash2, ChevronDown, ChevronUp, Flag } from 'lucide-react';
+import { Trophy, Calendar, TrendingUp, Trash2, ChevronDown, ChevronUp, Flag, Lock } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
+import { usePlanPermissions, getUpgradeMessage } from '@/lib/hooks/use-plan-permissions';
 
 export default function ResultsPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const { canReviewAnswers } = usePlanPermissions();
   const [results, setResults] = useState<TestResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'recent'>('recent');
@@ -76,6 +80,12 @@ export default function ResultsPage() {
   };
 
   const toggleResultExpansion = async (resultId: number) => {
+    if (!canReviewAnswers) {
+      alert(getUpgradeMessage('reviewAnswers'));
+      router.push('/pricing');
+      return;
+    }
+
     setExpandedResults((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(resultId)) {
@@ -278,25 +288,32 @@ export default function ResultsPage() {
                     </div>
                   )}
 
-                  {/* View Questions Button - Always show for results with questions */}
+                  {/* View Questions Button - Permission based */}
                   <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => toggleResultExpansion(result.id)}
-                      className="w-full"
-                    >
-                      {expandedResults.has(result.id) ? (
-                        <>
-                          <ChevronUp className="mr-2 h-4 w-4" />
-                          Hide Questions
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="mr-2 h-4 w-4" />
-                          View All Questions
-                        </>
-                      )}
-                    </Button>
+                    {canReviewAnswers ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => toggleResultExpansion(result.id)}
+                        className="w-full"
+                      >
+                        {expandedResults.has(result.id) ? (
+                          <>
+                            <ChevronUp className="mr-2 h-4 w-4" />
+                            Hide Questions
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="mr-2 h-4 w-4" />
+                            View All Questions
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="w-full" disabled>
+                        <Lock className="mr-2 h-4 w-4" />
+                        Review Answers (PRO Required)
+                      </Button>
+                    )}
 
                     {expandedResults.has(result.id) && (
                       <div className="mt-4 space-y-4">

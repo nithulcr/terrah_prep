@@ -10,6 +10,7 @@ import { Profile, Subscription, UsageSummary } from '@/types';
 import { profileService } from '@/lib/services/profile.service';
 import { subscriptionService } from '@/lib/services/subscription.service';
 import { usageService } from '@/lib/services/usage.service';
+import { deviceSessionService } from '@/lib/services/device-session.service';
 
 // ============================================
 // TYPES
@@ -25,6 +26,8 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
   refreshUsage: () => Promise<void>;
+  deviceLimitError: string | null;
+  clearDeviceLimitError: () => void;
 }
 
 // ============================================
@@ -43,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deviceLimitError, setDeviceLimitError] = useState<string | null>(null);
 
   // ============================================
   // FETCH PROFILE
@@ -56,6 +60,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Only log actual errors, not missing profiles (which is expected right after signup)
       if (error) {
         console.error('AuthProvider: Error fetching profile:', error);
+      }
+      
+      // Fetch plan data if profile exists
+      if (userProfile?.plan_slug) {
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('slug', userProfile.plan_slug)
+          .maybeSingle();
+        
+        if (plan) {
+          (userProfile as any).plan = plan;
+        }
       }
       
       console.log('AuthProvider: Profile fetched:', userProfile);
@@ -181,11 +198,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshUsage]);
 
   // ============================================
+  // DEVICE LIMIT ERROR
+  // ============================================
+
+  const clearDeviceLimitError = () => {
+    setDeviceLimitError(null);
+  };
+
+  // ============================================
   // SIGN OUT
   // ============================================
 
   const handleSignOut = async () => {
     try {
+      // Deactivate device session before signing out
+      if (user?.id) {
+        await deviceSessionService.logoutDevice(user.id);
+      }
+      
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
@@ -221,19 +251,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false); // Don't wait for profile/subscription
 
-      if (session?.user) {
-        // Fetch profile and subscription asynchronously (non-blocking)
-        console.log('AuthProvider: Fetching data for user:', session.user.id);
-        fetchProfile(session.user.id);
-        fetchSubscription(session.user.id);
-        fetchUsage(session.user.id);
-      } else {
-        // Clear data when user signs out
-        console.log('AuthProvider: Clearing user data');
-        setProfile(null);
-        setSubscription(null);
-        setUsage(null);
-      }
+        if (session?.user) {
+          // Handle device session management on sign in
+          if (event === 'SIGNED_IN') {
+            try {
+              // Fetch profile to get plan
+              const { profile: profileData } = await profileService.getProfile(supabase, session.user.id);
+              
+              if (profileData?.plan_slug) {
+                // Fetch plan to get max device sessions
+                const { data: plan } = await supabase
+                  .from('plans')
+                  .select('max_device_sessions')
+                  .eq('slug', profileData.plan_slug)
+                  .maybeSingle();
+
+                const maxDevices = plan?.max_device_sessions || 1;
+
+                // Check device limit
+                const deviceCheck = await deviceSessionService.checkDeviceLimit(
+                  session.user.id,
+                  maxDevices
+                );
+
+                if (!deviceCheck.allowed) {
+                  // Device limit reached - sign out and show user-friendly error
+                  console.error('Device limit reached:', deviceCheck.reason);
+                  const errorMessage = 'You are already signed in on the maximum number of allowed devices for your plan. Please sign out from another device before signing in on this one.';
+                  setDeviceLimitError(errorMessage);
+                  await supabase.auth.signOut();
+                  setUser(null);
+                  setProfile(null);
+                  setSubscription(null);
+                  setUsage(null);
+                  return;
+                }
+
+                // Register device session
+                await deviceSessionService.registerDevice(session.user.id);
+                
+                // Start heartbeat
+                deviceSessionService.startHeartbeat(session.user.id);
+              }
+            } catch (error) {
+              console.error('Error managing device session:', error);
+              // Don't block login on device session errors
+            }
+          }
+
+          // Fetch profile and subscription asynchronously (non-blocking)
+          console.log('AuthProvider: Fetching data for user:', session.user.id);
+          fetchProfile(session.user.id);
+          fetchSubscription(session.user.id);
+          fetchUsage(session.user.id);
+        } else {
+          // Clear data when user signs out
+          console.log('AuthProvider: Clearing user data');
+          setProfile(null);
+          setSubscription(null);
+          setUsage(null);
+        }
       }
     );
 
@@ -256,6 +333,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshProfile,
     refreshSubscription,
     refreshUsage,
+    deviceLimitError,
+    clearDeviceLimitError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

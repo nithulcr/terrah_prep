@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Calendar, BookOpen, ClipboardList, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { Plan, UserUsage } from '@/types';
+import { getPlanDuration, getQuestionsPerDay, getMockTestsPerMonth, getLifetimeQuestions } from '@/lib/utils/planHelpers';
 import UserLayout from '@/app/user-layout';
 
 export default function DashboardPage() {
@@ -92,6 +93,11 @@ export default function DashboardPage() {
     const limit = plan.lifetime_question_limit;
     if (limit === null || limit === undefined) return null; // Unlimited
     return Math.max(0, limit - usage.free_questions_used);
+  };
+
+  const getPlanDisplayDuration = () => {
+    if (!plan) return 'FREE';
+    return getPlanDuration(plan.duration_days);
   };
 
   const isSubscriptionActive = subscription && 
@@ -218,6 +224,9 @@ export default function DashboardPage() {
                   <p className="text-sm text-slate-600">Current Plan</p>
                   <p className="text-3xl font-bold text-slate-900 mt-2">
                     {plan?.name || 'FREE'}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {getPlanDisplayDuration()}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">

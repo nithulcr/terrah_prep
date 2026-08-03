@@ -123,5 +123,6 @@ export function useToast() {
     showSuccess,
     showError,
     showInfo,
+    removeToast,
   };
 }
