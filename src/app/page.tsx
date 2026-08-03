@@ -6,6 +6,13 @@ import WhyChoose  from "@/components/WhyChoose";
 import ExamCategories  from "@/components/ExamCategories";
 import PlatformFeatures  from "@/components/PlatformFeatures";
 import RewardsSection  from "@/components/RewardsSection";
+import PricingPreview  from "@/components/PricingPreview";
+import StudentJourney  from "@/components/StudentJourney";
+import Testimonials  from "@/components/Testimonials";
+import FAQSection from "@/components/FAQSection";
+
+
+
 
 
 
@@ -31,6 +38,13 @@ export default function HomePage() {
       <ExamCategories />
       <PlatformFeatures />
       <RewardsSection />
+      <PricingPreview />
+      <StudentJourney />
+      <Testimonials />
+      <FAQSection />
+
+
+
 
 
 
