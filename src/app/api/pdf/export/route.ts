@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - PDF EXPORT API
+// Terrah Qbank - PDF EXPORT API
 // ============================================
 
 import { NextResponse } from 'next/server';

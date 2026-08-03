@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - MIDDLEWARE
+// Terrah Qbank - MIDDLEWARE
 // ============================================
 
 import { NextResponse } from 'next/server';

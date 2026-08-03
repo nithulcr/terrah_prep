@@ -93,7 +93,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center space-x-2 mb-4">
               <BookOpen className="h-10 w-10 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">Terrah Prep</span>
+              <span className="text-2xl font-bold text-gray-900">Terrah Qbank</span>
             </Link>
             <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
             <p className="text-gray-600 mt-2">Sign in to continue your preparation</p>

@@ -77,7 +77,7 @@ function VerifyEmailContent() {
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center space-x-2 mb-4">
               <BookOpen className="h-10 w-10 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">Terrah Prep</span>
+              <span className="text-2xl font-bold text-gray-900">Terrah Qbank</span>
             </Link>
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="h-8 w-8 text-blue-600" />

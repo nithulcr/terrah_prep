@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - DEVICE SESSION SERVICE
+// Terrah Qbank - DEVICE SESSION SERVICE
 // ============================================
 
 import { supabase } from '@/lib/supabase/client';

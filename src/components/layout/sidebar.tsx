@@ -107,11 +107,11 @@ export function Sidebar({ className = '', isOpen: isOpenProp, onToggle }: Sideba
           <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4">
             <img 
               src="/logo.png" 
-              alt="Terrah Prep" 
+              alt="Terrah Qbank" 
               className="h-8 w-8 object-contain"
             />
             <div>
-              <h1 className="text-lg font-bold text-slate-900">Terrah Prep</h1>
+              <h1 className="text-lg font-bold text-slate-900">Terrah Qbank</h1>
               <p className="text-xs text-slate-600">Exam Preparation</p>
             </div>
           </div>
@@ -171,7 +171,7 @@ export function Sidebar({ className = '', isOpen: isOpenProp, onToggle }: Sideba
           {/* Footer */}
           <div className="border-t border-slate-200 px-6 py-4">
             <p className="text-xs text-slate-500">
-              © 2026 Terrah Prep. All rights reserved.
+              © 2026 Terrah Qbank. All rights reserved.
             </p>
           </div>
         </div>

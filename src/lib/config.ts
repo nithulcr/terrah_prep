@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - APPLICATION CONFIGURATION
+// Terrah Qbank - APPLICATION CONFIGURATION
 // ============================================
 
 const isDevelopment = process.env.NODE_ENV === 'development';

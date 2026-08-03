@@ -1,4 +1,4 @@
-﻿# Terrah Prep data model
+﻿# Terrah Qbank data model
 
 The application uses only these Supabase tables: `profiles`, `subscriptions`, `plans`, `batches`, `categories`, and `questions`.
 

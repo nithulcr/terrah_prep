@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - USE AUTH HOOK
+// Terrah Qbank - USE AUTH HOOK
 // ============================================
 
 import { useAuth } from '@/lib/auth/auth-provider';

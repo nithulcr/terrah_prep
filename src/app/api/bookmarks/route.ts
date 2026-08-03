@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - BOOKMARKS API
+// Terrah Qbank - BOOKMARKS API
 // ============================================
 
 import { NextResponse } from 'next/server';

@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - CENTRALIZED TEST CONFIGURATION
+// Terrah Qbank - CENTRALIZED TEST CONFIGURATION
 // ============================================
 // All fixed test configuration values live here.
 // Only maintenance_mode remains in the app_settings table.

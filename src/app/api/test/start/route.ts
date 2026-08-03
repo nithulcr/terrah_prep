@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - TEST START API
+// Terrah Qbank - TEST START API
 // ============================================
 
 import { NextResponse } from 'next/server';

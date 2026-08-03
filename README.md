@@ -1,4 +1,4 @@
-# Rank Path - Premium Exam Mock Test Platform
+# Terrah Qbank - Premium Exam Mock Test Platform
 
 The premium exam mock test platform designed for Kerala PSC, SSC, Railway, Banking, and UPSC aspirants. Practice, track, and succeed with our comprehensive test series.
 
@@ -267,11 +267,11 @@ This project is licensed under the MIT License.
 
 ## 👨‍💻 Author
 
-Rank Path - The Premium Exam Mock Test Platform
+Terrah Qbank - The Premium Exam Mock Test Platform
 
 ## 📞 Support
 
-For support, email support@terrahprep.com or create an issue in the repository.
+For support, email support@TerrahQbank.com or create an issue in the repository.
 
 ## 🗺️ Roadmap
 

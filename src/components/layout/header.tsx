@@ -35,7 +35,7 @@ export const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/logo.png" alt="RankPath" className="w-[200px] md:w-[260px] h-auto" />
+            <img src="/logo.png" alt="TerrahQbank" className="w-[200px] md:w-[260px] h-auto" />
           </Link>
 
 

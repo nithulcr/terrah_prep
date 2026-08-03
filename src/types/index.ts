@@ -31,6 +31,7 @@ export interface Plan {
   lifetime_question_limit: number | null;
   allow_result_history: boolean;
   allow_pdf_download: boolean;
+  allow_analytics: boolean;
   allow_bookmarks: boolean;
   allow_review_answers: boolean;
   allow_performance_dashboard: boolean;
@@ -243,4 +244,57 @@ export interface CategoryQuestionCount {
   categoryName: string;
   categorySlug: string;
   count: number;
+}
+
+export interface QuestionReport {
+  id: number;
+  question_id: number;
+  user_id: string;
+  reason: string;
+  comment: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reward_points: number;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  question?: {
+    question: string;
+    category: {
+      name: string;
+    };
+  };
+  user?: {
+    email: string;
+    full_name: string;
+  };
+}
+
+export interface UserPoints {
+  id: number;
+  user_id: string;
+  total_points: number;
+  available_points: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PointTransaction {
+  id: number;
+  user_id: string;
+  transaction_type: string;
+  points: number;
+  description: string;
+  reference_id: number | null;
+  reference_type: string | null;
+  created_at: string;
+}
+
+export interface LuckySpinHistory {
+  id: number;
+  user_id: string;
+  reward_type: string;
+  reward_value: string;
+  points_deducted: number;
+  created_at: string;
 }

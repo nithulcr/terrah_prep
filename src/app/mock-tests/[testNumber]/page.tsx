@@ -6,10 +6,11 @@ import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { Question, questionOptions } from '@/types';
-import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock, Menu, Lock } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Bookmark, Flag, Clock, Menu, Lock, AlertTriangle } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
 import FlaggedQuestionsModal from '@/components/test/flagged-questions-modal';
 import QuestionPalette from '@/components/test/question-palette';
+import ReportQuestionModal from '@/components/question/report-question-modal';
 import { usePlanPermissions, getUpgradeMessage } from '@/lib/hooks/use-plan-permissions';
 
 export default function MockTestPage() {
@@ -36,6 +37,7 @@ export default function MockTestPage() {
   const [testDuration, setTestDuration] = useState<number>(90);
   const [showFlaggedModal, setShowFlaggedModal] = useState(false);
   const [showQuestionPalette, setShowQuestionPalette] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const handleBookmarkClick = (questionId: number) => {
     if (!canBookmark) {
@@ -523,6 +525,13 @@ export default function MockTestPage() {
               selectedAnswers={answers}
             />
 
+            <ReportQuestionModal
+              isOpen={showReportModal}
+              onClose={() => setShowReportModal(false)}
+              questionId={question.id}
+              questionText={question.question}
+            />
+
             <div className="mb-5 flex justify-between">
               <Badge>{question?.category?.name || 'Question'}</Badge>
               <span>{index + 1} / {questions.length}</span>
@@ -595,6 +604,14 @@ export default function MockTestPage() {
                   >
                     <Menu className="mr-1 h-4 w-4" />
                     Question Palette
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowReportModal(true)}
+                  >
+                    <AlertTriangle className="mr-1 h-4 w-4" />
+                    Report Question
                   </Button>
                 </div>
 

@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - PLAN PERMISSIONS HOOK
+// Terrah Qbank - PLAN PERMISSIONS HOOK
 // ============================================
 
 import { useMemo } from 'react';

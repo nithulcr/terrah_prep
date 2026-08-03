@@ -5,10 +5,10 @@
   --background: #ffffff;
   --foreground: #121826;
 
-  --yellow:   #CCE408;
-  --green: #3B82F6;
+  --yellow:   #fe6a03;
+  --green: #ffa032;
   --text: #F2F2F7;
-   --text2: #022f54;
+   --text2: #271101;
 }
 body {
   color: var(--foreground);
@@ -17,7 +17,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
+button{
+  cursor: pointer;
+}
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -199,7 +201,6 @@ button:focus {
 
 
 .button {
-  border: 1px none var(--light-outline);
   text-transform: uppercase;
   justify-content: center;
   align-items: center;
@@ -208,7 +209,7 @@ button:focus {
   display: flex;
   position: relative;
   cursor: pointer;
-  background: #fffac2;
+  background: #ffc583;
   border-radius: 10px;
   min-width: 150px;
 }

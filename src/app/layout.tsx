@@ -14,7 +14,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Terrah Prep - Premium Exam Mock Test Platform',
+  title: 'Terrah Qbank - Premium Exam Mock Test Platform',
   description: 'The premium exam mock test platform for Kerala PSC, SSC, Railway, Banking, and UPSC aspirants. Practice with quality questions and track your progress.',
   keywords: 'Kerala PSC, SSC, Railway, Banking, UPSC, mock test, exam preparation, online test',
   icons: {

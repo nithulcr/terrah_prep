@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - UI COMPONENTS
+// Terrah Qbank - UI COMPONENTS
 // ============================================
 
 import React from 'react';

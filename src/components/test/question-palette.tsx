@@ -102,7 +102,7 @@ export default function QuestionPalette({
           </div>
 
           {/* Statistics */}
-          <div className="mb-4 grid grid-cols-4 gap-3">
+          <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="border border-slate-200">
               <CardBody className="p-3 text-center">
                 <p className="text-xs text-slate-600">Total</p>
@@ -130,7 +130,7 @@ export default function QuestionPalette({
           </div>
 
           {/* Filter Buttons */}
-          <div className="mb-4 flex gap-2">
+          <div className="mb-4 flex gap-2 flex-wrap">
             <Button
               variant={filter === 'all' ? 'primary' : 'outline'}
               size="sm"
@@ -182,7 +182,7 @@ export default function QuestionPalette({
           </div>
 
           {/* Question Grid */}
-          <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 gap-2">
+          <div className="flex flex-wrap gap-2">
             {filteredQuestions.map((question, idx) => {
               const originalIndex = questions.findIndex(q => q.id === question.id);
               const status = getQuestionStatus(question.id, originalIndex);
@@ -199,7 +199,7 @@ export default function QuestionPalette({
                   title={`Q${originalIndex + 1}: ${status}${hasAnswer ? ' (Answered)' : ''}`}
                 >
                   <span className="text-sm font-semibold">{originalIndex + 1}</span>
-                  <div className="absolute -top-1 -right-1">
+                  <div className="absolute -top-1 -right-1 opacity-0">
                     {getStatusIcon(status, question.id)}
                   </div>
                 </button>

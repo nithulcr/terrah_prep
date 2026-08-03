@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardBody, Button, Badge } from '@/components/ui';
-import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
-import { Calendar, BookOpen, ClipboardList, TrendingUp } from 'lucide-react';
-import { Plan, UserUsage } from '@/types';
+import { supabase } from '@/lib/supabase/client';
+import { usePoints } from '@/context/PointsContext';
+import { User, Mail, Phone, Calendar, Trophy, TrendingUp, Award } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [usage, setUsage] = useState<UserUsage | null>(null);
-  const [subscription, setSubscription] = useState<any>(null);
+  const { points, transactions, availablePoints, loading: pointsLoading } = usePoints();
 
   useEffect(() => {
     if (user) {
@@ -23,48 +22,14 @@ export default function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      // Get profile and usage in parallel
-      const [profileResult, usageResult, subscriptionResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user?.id)
-          .maybeSingle(),
-        
-        supabase
-          .from('user_usage')
-          .select('*')
-          .eq('user_id', user?.id)
-          .maybeSingle(),
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
 
-        supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', user?.id)
-          .eq('status', 'active')
-          .maybeSingle()
-      ]);
-
-      const profile = profileResult.data as any;
-      const usageData = usageResult.data as UserUsage | null;
-      const subscriptionData = subscriptionResult.data as any;
-
-      if (usageData) {
-        setUsage(usageData);
-        setSubscription(subscriptionData);
-        
-        // Get plan using profile.plan_slug (single source of truth)
-        if (profile?.plan_slug) {
-          const { data: planData } = await supabase
-            .from('plans')
-            .select('*')
-            .eq('slug', profile.plan_slug)
-            .maybeSingle();
-
-          if (planData) {
-            setPlan(planData as Plan);
-          }
-        }
+      if (data) {
+        setProfile(data);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -73,170 +38,179 @@ export default function ProfilePage() {
     }
   };
 
-  const getRemainingTests = () => {
-    if (!plan || !usage) return 0;
-    const limit = plan.monthly_mock_test_limit;
-    if (limit === null || limit === undefined) return null; // Unlimited
-    return Math.max(0, limit - usage.tests_this_month);
-  };
-
-  const getRemainingDailyQuestions = () => {
-    if (!plan || !usage) return 0;
-    const limit = plan.daily_question_limit;
-    if (limit === null || limit === undefined) return null; // Unlimited
-    return Math.max(0, limit - usage.questions_today);
-  };
-
-  const getRemainingLifetimeQuestions = () => {
-    if (!plan || !usage) return 0;
-    const limit = plan.lifetime_question_limit;
-    if (limit === null || limit === undefined) return null; // Unlimited
-    return Math.max(0, limit - usage.free_questions_used);
-  };
-
-  const isSubscriptionActive = subscription && 
-    subscription.status === 'active' && 
-    (!subscription.expires_at || new Date(subscription.expires_at) >= new Date());
-
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 pt-20">
-        <div className="flex items-center justify-center py-20">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+      <UserLayout>
+        <div className="mx-auto max-w-4xl p-6">
+          <div className="space-y-4">
+            <div className="h-8 bg-slate-200 rounded animate-pulse w-1/2"></div>
+            <div className="h-64 bg-slate-200 rounded animate-pulse"></div>
+          </div>
         </div>
-      </main>
+      </UserLayout>
     );
   }
 
   return (
     <UserLayout>
-      <section className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-violet-50">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            My Profile
-          </h1>
-          <p className="mt-3 text-lg text-slate-600">
-            View your subscription and usage details
-          </p>
-        </div>
-      </section>
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-slate-900 mb-8">My Profile</h1>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Current Plan */}
+        <div className="grid gap-6">
+          {/* Profile Information */}
           <Card className="border border-slate-200 shadow-sm">
             <CardBody className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">Current Plan</h2>
-                <Badge variant={isSubscriptionActive ? 'success' : 'danger'}>
-                  {isSubscriptionActive ? 'Active' : 'Inactive'}
-                </Badge>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+                  <User className="h-8 w-8 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {profile?.full_name || user?.email?.split('@')[0]}
+                  </h2>
+                  <p className="text-slate-600">{user?.email}</p>
+                </div>
               </div>
 
-              {plan ? (
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900">{plan.name}</h3>
-                  <p className="mt-1 text-sm text-slate-600">{plan.description}</p>
-                  
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Price:</span>
-                      <span className="font-semibold">₹{plan.price}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Duration:</span>
-                      <span className="font-semibold">{plan.duration_days} days</span>
-                    </div>
-                    {subscription?.expires_at && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Expires:</span>
-                        <span className="font-semibold">
-                          {new Date(subscription.expires_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4">
+                  <Mail className="h-5 w-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-600">Email</p>
+                    <p className="font-medium text-slate-900">{user?.email}</p>
                   </div>
                 </div>
+
+                {profile?.phone && (
+                  <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4">
+                    <Phone className="h-5 w-5 text-slate-400" />
+                    <div>
+                      <p className="text-sm text-slate-600">Phone</p>
+                      <p className="font-medium text-slate-900">{profile.phone}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4">
+                  <Calendar className="h-5 w-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-600">Member Since</p>
+                    <p className="font-medium text-slate-900">
+                      {new Date(profile?.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4">
+                  <Award className="h-5 w-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-600">Role</p>
+                    <p className="font-medium text-slate-900 capitalize">{profile?.role}</p>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Points Overview */}
+          <Card className="border border-slate-200 shadow-sm">
+            <CardBody className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <Trophy className="h-6 w-6 text-yellow-600" />
+                <h3 className="text-xl font-semibold text-slate-900">My Points</h3>
+              </div>
+
+              {pointsLoading ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 bg-slate-200 rounded animate-pulse"></div>
+                  ))}
+                </div>
               ) : (
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Free Plan</h3>
-                  <p className="mt-1 text-sm text-slate-600">No active subscription</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-lg bg-blue-50 p-6 text-center">
+                    <TrendingUp className="mx-auto h-8 w-8 text-blue-600 mb-2" />
+                    <p className="text-sm text-slate-600 mb-1">Available Points</p>
+                    <p className="text-3xl font-bold text-blue-600">{availablePoints}</p>
+                  </div>
+
+                  <div className="rounded-lg bg-green-50 p-6 text-center">
+                    <Trophy className="mx-auto h-8 w-8 text-green-600 mb-2" />
+                    <p className="text-sm text-slate-600 mb-1">Total Earned</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {points?.total_points || 0}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-purple-50 p-6 text-center">
+                    <Award className="mx-auto h-8 w-8 text-purple-600 mb-2" />
+                    <p className="text-sm text-slate-600 mb-1">Used Points</p>
+                    <p className="text-3xl font-bold text-purple-600">
+                      {(points?.total_points || 0) - (points?.available_points || 0)}
+                    </p>
+                  </div>
                 </div>
               )}
 
               <div className="mt-6">
-                <Button 
-                  className="w-full" 
-                  variant="primary"
-                  onClick={() => window.location.href = '/pricing'}
+                <Button
+                  onClick={() => window.location.href = '/rewards'}
+                  className="w-full md:w-auto"
                 >
-                  {plan ? 'Upgrade Plan' : 'Get Started'}
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Visit Rewards Center
                 </Button>
               </div>
             </CardBody>
           </Card>
 
-          {/* Usage Statistics */}
+          {/* Recent Transactions */}
           <Card className="border border-slate-200 shadow-sm">
             <CardBody className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Usage Statistics</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center">
-                    <ClipboardList className="h-5 w-5 text-blue-600 mr-3" />
-                    <div>
-                      <p className="text-sm text-slate-600">Monthly Tests</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {usage?.tests_this_month || 0} / {plan?.monthly_mock_test_limit === 0 ? 'N/A' : plan?.monthly_mock_test_limit || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  {getRemainingTests() !== null && (
-                    <Badge variant={getRemainingTests() === 0 ? 'danger' : 'success'}>
-                      {getRemainingTests() === 0 ? 'Limit Reached' : `${getRemainingTests()} left`}
-                    </Badge>
-                  )}
-                </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Recent Transactions</h3>
 
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <BookOpen className="h-5 w-5 text-green-600 mr-3" />
-                    <div>
-                      <p className="text-sm text-slate-600">Daily Questions</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {usage?.questions_today || 0} / {plan?.daily_question_limit === 0 ? 'N/A' : plan?.daily_question_limit || 'N/A'}
-                      </p>
+              {transactions.length === 0 ? (
+                <p className="text-center text-slate-500 py-8">
+                  No transactions yet. Start reporting questions to earn points!
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {transactions.slice(0, 10).map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between rounded-lg bg-slate-50 p-4"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900">{transaction.description}</p>
+                        <p className="text-sm text-slate-500">
+                          {new Date(transaction.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${transaction.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {transaction.points > 0 ? '+' : ''}{transaction.points}
+                        </p>
+                        <p className="text-xs text-slate-500 capitalize">{transaction.transaction_type}</p>
+                      </div>
                     </div>
-                  </div>
-                  {getRemainingDailyQuestions() !== null && (
-                    <Badge variant={getRemainingDailyQuestions() === 0 ? 'danger' : 'success'}>
-                      {getRemainingDailyQuestions() === 0 ? 'Limit Reached' : `${getRemainingDailyQuestions()} left`}
-                    </Badge>
-                  )}
+                  ))}
                 </div>
+              )}
 
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                  <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 text-purple-600 mr-3" />
-                    <div>
-                      <p className="text-sm text-slate-600">Lifetime Questions</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {usage?.free_questions_used || 0} / {plan?.lifetime_question_limit === 0 ? 'N/A' : plan?.lifetime_question_limit || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  {getRemainingLifetimeQuestions() !== null && (
-                    <Badge variant={getRemainingLifetimeQuestions() === 0 ? 'danger' : 'success'}>
-                      {getRemainingLifetimeQuestions() === 0 ? 'Limit Reached' : `${getRemainingLifetimeQuestions()} left`}
-                    </Badge>
-                  )}
+              {transactions.length > 10 && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = '/rewards'}
+                  >
+                    View All Transactions
+                  </Button>
                 </div>
-              </div>
+              )}
             </CardBody>
           </Card>
         </div>
-      </section>
+      </div>
     </UserLayout>
   );
 }

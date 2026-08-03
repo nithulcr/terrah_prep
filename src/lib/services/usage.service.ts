@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - USAGE SERVICE (DATABASE-DRIVEN)
+// Terrah Qbank - USAGE SERVICE (DATABASE-DRIVEN)
 // ============================================
 // ALL limits come from database - NO hardcoded plan checks
 

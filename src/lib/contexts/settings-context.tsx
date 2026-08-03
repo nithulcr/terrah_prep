@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - SETTINGS CONTEXT
+// Terrah Qbank - SETTINGS CONTEXT
 // ============================================
 // Only manages maintenance_mode from app_settings.
 // All test configuration values are in src/config/testConfig.ts

@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - TOAST COMPONENT
+// Terrah Qbank - TOAST COMPONENT
 // ============================================
 
 'use client';

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Badge, Button, Card, CardBody } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
-import { Users, BookOpen, DollarSign, TrendingUp, Settings, Calendar } from 'lucide-react';
+import { Users, BookOpen, DollarSign, TrendingUp, Settings, Calendar, Trophy } from 'lucide-react';
 
 interface AdminStats {
   totalUsers: number;
@@ -330,6 +330,22 @@ export default function AdminDashboardPage() {
                     <div>
                       <p className="font-semibold text-slate-900">Manage Users</p>
                       <p className="text-sm text-slate-600">View and manage users</p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </Link>
+
+            <Link href="/dashboard/results">
+              <Card className="border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                <CardBody className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-green-100 p-3 text-green-600">
+                      <Trophy className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">View Results</p>
+                      <p className="text-sm text-slate-600">Check test results and analytics</p>
                     </div>
                   </div>
                 </CardBody>

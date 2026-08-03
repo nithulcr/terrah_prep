@@ -1,5 +1,5 @@
 ﻿// ============================================
-// TERRAH PREP - SUBSCRIPTION SERVICE (SINGLE SOURCE OF TRUTH)
+// Terrah Qbank - SUBSCRIPTION SERVICE (SINGLE SOURCE OF TRUTH)
 // ============================================
 // ALL subscription logic - database-driven, NO hardcoded values
 

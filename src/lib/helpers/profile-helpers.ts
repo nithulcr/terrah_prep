@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - PROFILE HELPERS
+// Terrah Qbank - PROFILE HELPERS
 // ============================================
 
 import { Profile, Subscription, SubscriptionPlan } from '@/types';

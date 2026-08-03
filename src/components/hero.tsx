@@ -241,7 +241,7 @@ export const Hero = () => {
             {/* Optimized Background Image */}
             <Image
                 src="/hero.webp"
-                alt="Rank Path"
+                alt="Terrah Qbank"
                 fill
                 priority
                 sizes="100vw"
@@ -259,7 +259,7 @@ export const Hero = () => {
                 >
                     <div className="relative z-10 max-w-5xl">
                         <h1 ref={headline1Ref} className="text-5xl md:text-6xl text-white">
-                            RankPath
+                            TerrahQbank
                         </h1>
                         <h2 ref={subtitle1Ref} className="text-2xl mx-auto md:text-[30px] pt-7 pb-2 text-gradient2 font-semibold">
                             Engineered for High Performance
@@ -318,7 +318,7 @@ export const Hero = () => {
                     <div className="relative z-10 max-w-5xl text-center mx-auto pb-28">
                        
                         <h2 ref={headline3Ref} className="max-w-4xl mx-auto text-4xl md:text-6xl font-bold leading-tight ">
-                           Master Your Exam With<br /><span className="text-gradient text-5xl md:text-8xl text-gradient mt-[-10px] block ml-auto mr-auto">Rank Path</span>
+                           Master Your Exam With<br /><span className="text-gradient text-5xl md:text-8xl text-gradient mt-[-10px] block ml-auto mr-auto">Terrah Qbank</span>
                         </h2>
 
                         <p ref={desc3Ref} className="my-8 mx-auto max-w-[700px] text-sm md:text-[16px] white-text font-light">

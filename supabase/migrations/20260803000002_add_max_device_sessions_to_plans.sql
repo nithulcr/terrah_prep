@@ -1,5 +1,5 @@
 -- ============================================
--- TERRAH PREP - ADD MAX DEVICE SESSIONS TO PLANS
+-- Terrah Qbank - ADD MAX DEVICE SESSIONS TO PLANS
 -- ============================================
 
 -- Add max_device_sessions column to plans table

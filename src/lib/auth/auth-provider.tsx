@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - AUTH PROVIDER CONTEXT
+// Terrah Qbank - AUTH PROVIDER CONTEXT
 // ============================================
 
 'use client';

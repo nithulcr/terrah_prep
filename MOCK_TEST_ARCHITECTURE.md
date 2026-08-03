@@ -1,4 +1,4 @@
-# Terrah Prep - Mock Test Architecture
+# Terrah Qbank - Mock Test Architecture
 ## Production-Ready Single Source of Truth Implementation
 
 ---

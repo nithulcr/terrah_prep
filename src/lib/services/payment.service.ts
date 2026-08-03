@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - PAYMENT SERVICE
+// Terrah Qbank - PAYMENT SERVICE
 // ============================================
 
 import { Plan, Subscription, UserUsage } from '@/types';

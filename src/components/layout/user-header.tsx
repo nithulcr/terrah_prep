@@ -54,14 +54,14 @@ export const UserHeader: React.FC = () => {
   return (
     <header className="fixed w-full bg-white shadow-sm border-b border-slate-200 py-3 top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex lg:grid grid-cols-3 justify-between items-center lg:h-16">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <img src="/logo2.png" alt="Terrah Prep" className="w-[220px] h-auto" />
+            <img src="/logo2.png" alt="Terrah Qbank" className="w-[170px] lg:w-[260px] h-auto" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden lg:flex items-center space-x-6 mx-auto">
             {userNavLinks.map((link) => (
               <Link
                 key={link.href}
@@ -78,7 +78,7 @@ export const UserHeader: React.FC = () => {
           </nav>
 
           {/* User Dropdown - Desktop */}
-          <div className="hidden md:block relative">
+          <div className="hidden lg:block relative ml-auto">
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
               className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -152,7 +152,7 @@ export const UserHeader: React.FC = () => {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden p-1 rounded-lg hover:bg-gray-100"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? (
@@ -165,7 +165,7 @@ export const UserHeader: React.FC = () => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
+          <div className="lg:hidden py-4 border-t border-gray-200">
             <nav className="flex flex-col space-y-2">
               {userNavLinks.map((link) => (
                 <Link

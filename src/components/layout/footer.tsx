@@ -30,7 +30,7 @@ export const Footer: React.FC = () => {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center space-x-2">
-              <img src="/logo.png" alt="RankPath" className="w-[280px] h-auto" />
+              <img src="/logo.png" alt="TerrahQbank" className="w-[200px] lg:w-[280px] h-auto" />
             </Link>
             <p className="text-sm text-gray-400 my-4 max-w-md">
               The premium exam mock test platform for Kerala PSC, SSC, Railway, Banking, and UPSC aspirants.

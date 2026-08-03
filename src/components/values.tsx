@@ -210,7 +210,7 @@ export const Values = () => {
                         >
                            Invest in Your Future
                         </h2>
-                        <h5 ref={subheaderRef} className=" text-[16px] md:text-[19px]  font-semibold"> Join 10,000+ candidates who have already unlocked Pro features. Plans start from as low as ₹49/month.</h5>
+                        <h5 ref={subheaderRef} className=" text-[16px] md:text-[19px]  font-semibold"> Join 100+ candidates who have already unlocked Pro features.<br />Plans start from as low as ₹99/month.</h5>
      
                         <p ref={desc2Ref} className=" max-w-[880px]  text-[14px] md:text-[16px]  opacity-70 mt-3  tracking-normal">
 
@@ -272,7 +272,7 @@ export const Values = () => {
                         ))}
                     </div>
                     <div ref={counterContainerRef} className="max-w-[800px] w-full mx-auto md:py-8">
-                        <div className="flex justify-center  flex-wrap sm:grid grid-cols-3 gap-x-4 text-center gap-y-7 mb-8">
+                        <div className="flex justify-center  flex-wrap sm:grid grid-cols-3 gap-x-4 text-center gap-y-7">
                             <div className="text-center flex flex-col w-[calc(50%-10px)] sm:w-full">
                                 <h3 className="text-gradient text-4xl md:text-5xl font-bold mx-auto">10,000+</h3>
                                 <p className="text-sm  mt-2 font-semibold uppercase ">Questions</p>

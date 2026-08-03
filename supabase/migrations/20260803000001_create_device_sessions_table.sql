@@ -1,5 +1,5 @@
 -- ============================================
--- TERRAH PREP - DEVICE SESSIONS TABLE
+-- Terrah Qbank - DEVICE SESSIONS TABLE
 -- ============================================
 
 -- Create device_sessions table

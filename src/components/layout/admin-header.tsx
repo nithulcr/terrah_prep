@@ -37,7 +37,7 @@ export const AdminHeader: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/admin" className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Terrah Prep" className="w-[180px] h-auto" />
+            <img src="/logo.png" alt="Terrah Qbank" className="w-[180px] h-auto" />
           </Link>
 
           {/* Desktop Navigation */}

@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - PROFILE SERVICE
+// Terrah Qbank - PROFILE SERVICE
 // ============================================
 
 import { Profile } from '@/types';

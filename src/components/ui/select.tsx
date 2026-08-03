@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - SELECT COMPONENT
+// Terrah Qbank - SELECT COMPONENT
 // ============================================
 
 import React from 'react';

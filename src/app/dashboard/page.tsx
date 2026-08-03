@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Calendar, BookOpen, ClipboardList, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { Plan, UserUsage } from '@/types';
-import { getPlanDuration, getQuestionsPerDay, getMockTestsPerMonth, getLifetimeQuestions } from '@/lib/utils/planHelpers';
+import { getPlanDuration } from '@/lib/utils/planHelpers';
 import UserLayout from '@/app/user-layout';
 
 export default function DashboardPage() {
@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [usage, setUsage] = useState<UserUsage | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const [accuracy, setAccuracy] = useState<number>(0);
 
   useEffect(() => {
     if (user) {
@@ -65,6 +66,23 @@ export default function DashboardPage() {
           if (planData) {
             setPlan(planData as Plan);
           }
+        }
+
+        // Calculate accuracy from test results
+        const { data: testResults, error: testResultsError } = await supabase
+          .from('test_results')
+          .select('correct_answers, total_questions')
+          .eq('user_id', user?.id);
+
+        if (!testResultsError && testResults && testResults.length > 0) {
+          const totalCorrect = testResults.reduce((sum, r) => sum + r.correct_answers, 0);
+          const totalQuestions = testResults.reduce((sum, r) => sum + r.total_questions, 0);
+          const accuracyPercentage = totalQuestions > 0 
+            ? Math.round((totalCorrect / totalQuestions) * 100) 
+            : 0;
+          setAccuracy(accuracyPercentage);
+        } else {
+          setAccuracy(0);
         }
       }
     } catch (error) {
@@ -194,7 +212,7 @@ export default function DashboardPage() {
               </div>
               {getRemainingDailyQuestions() !== null && (
                 <p className="text-sm text-slate-600 mt-2">
-                  {getRemainingDailyQuestions()} remaining today
+                  {getRemainingDailyQuestions()} questions remaining today
                 </p>
               )}
             </CardBody>
@@ -205,14 +223,16 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-600">Accuracy</p>
-                  <p className="text-3xl font-bold text-slate-900 mt-2">0%</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2">
+                    {accuracy}%
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-purple-600" />
                 </div>
               </div>
               <p className="text-sm text-slate-600 mt-2">
-                Complete tests to see accuracy
+                {accuracy > 0 ? 'Based on completed tests' : 'Complete tests to see accuracy'}
               </p>
             </CardBody>
           </Card>

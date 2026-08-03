@@ -1,5 +1,5 @@
 -- ============================================
--- TERRAH PREP - UPDATE PLAN FEATURES
+-- Terrah Qbank - UPDATE PLAN FEATURES
 -- ============================================
 
 -- Update plans with new feature structure
@@ -93,4 +93,4 @@ SET
 WHERE slug = 'premium';
 
 -- Add comment
-COMMENT ON TABLE plans IS 'Subscription plans with feature flags for Terrah Prep';
+COMMENT ON TABLE plans IS 'Subscription plans with feature flags for Terrah Qbank';

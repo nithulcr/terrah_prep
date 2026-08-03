@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - TEST SETS SERVICE (SINGLE SOURCE OF TRUTH)
+// Terrah Qbank - TEST SETS SERVICE (SINGLE SOURCE OF TRUTH)
 // ============================================
 // This is the ONLY service that should handle question assignment
 // All question generation happens ONCE during admin "Generate Test Sets"

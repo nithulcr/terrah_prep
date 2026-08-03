@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - AUTHENTICATION SERVICE
+// Terrah Qbank - AUTHENTICATION SERVICE
 // ============================================
 
 import { supabase } from '@/lib/supabase/client';

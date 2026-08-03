@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - SUPABASE SERVER CLIENT
+// Terrah Qbank - SUPABASE SERVER CLIENT
 // ============================================
 
 import { createClient } from '@supabase/supabase-js';

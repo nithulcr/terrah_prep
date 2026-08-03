@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - MOCK TESTS SERVICE
+// Terrah Qbank - MOCK TESTS SERVICE
 // ============================================
 // This service handles test availability and access control
 // All question operations are handled by testSetsService

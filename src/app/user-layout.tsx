@@ -14,7 +14,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
       <UserHeader />
 
       {/* Main Content */}
-      <main className="pb-6 pt-22">
+      <main className="pb-6 pt-16 lg:pt-22">
         {children}
       </main>
     </div>

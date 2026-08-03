@@ -1,4 +1,4 @@
--- Production subscription architecture for Terrah Prep.
+-- Production subscription architecture for Terrah Qbank.
 -- Convention: a NULL duration or limit means unlimited. Values are never inferred
 -- in application code; read the entitlement columns from plans instead.
 

@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - SUBSCRIPTION HOOKS
+// Terrah Qbank - SUBSCRIPTION HOOKS
 // ============================================
 
 'use client';

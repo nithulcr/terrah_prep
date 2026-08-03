@@ -1,5 +1,5 @@
 // ============================================
-// TERRAH PREP - ANALYTICS API
+// Terrah Qbank - ANALYTICS API
 // ============================================
 
 import { NextResponse } from 'next/server';
