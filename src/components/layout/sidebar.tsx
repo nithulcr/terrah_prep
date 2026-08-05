@@ -112,7 +112,7 @@ export function Sidebar({ className = '', isOpen: isOpenProp, onToggle }: Sideba
             />
             <div>
               <h1 className="text-lg font-bold text-slate-900">Terrah Qbank</h1>
-              <p className="text-xs text-slate-600">Exam Preparation</p>
+              <p className="text-xs text-slate-600">Exam Qbankaration</p>
             </div>
           </div>
 

@@ -81,14 +81,15 @@ function calculateRemaining(
 
 export function useSubscription(): UseSubscriptionReturn {
   const { user, subscription, usage, refreshUsage, profile } = useAuth();
+   
+  // Get plan from profile.plan (already fetched in auth-provider)
+  // The auth-provider attaches the plan object to the profile
+  const plan = (profile as any)?.plan || null;
   
-  // Get plan from profile.plan_slug (single source of truth)
-  const [plan, setPlan] = useState<any>(null);
-
+  // If plan is not loaded yet, fetch it (fallback)
   useEffect(() => {
     const fetchPlan = async () => {
-      if (!profile?.plan_slug) {
-        setPlan(null);
+      if (!profile?.plan_slug || (profile as any)?.plan) {
         return;
       }
 
@@ -98,11 +99,14 @@ export function useSubscription(): UseSubscriptionReturn {
         .eq('slug', profile.plan_slug)
         .maybeSingle();
 
-      setPlan(data);
+      if (data) {
+        // Update profile with plan data
+        (profile as any).plan = data;
+      }
     };
 
     fetchPlan();
-  }, [profile?.plan_slug]);
+  }, [profile?.plan_slug, profile]);
 
   const features = getFeatureFlags(plan);
   

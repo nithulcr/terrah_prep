@@ -96,7 +96,7 @@ export default function LoginPage() {
               <span className="text-2xl font-bold text-gray-900">Terrah Qbank</span>
             </Link>
             <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
-            <p className="text-gray-600 mt-2">Sign in to continue your preparation</p>
+            <p className="text-gray-600 mt-2">Sign in to continue your Qbankaration</p>
           </div>
 
           {error && (

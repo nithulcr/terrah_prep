@@ -116,9 +116,13 @@ CREATE POLICY "Admins can view all reports" ON question_reports
 CREATE POLICY "Users can view their own points" ON user_points
   FOR SELECT USING (auth.uid() = user_id);
 
--- Only admins can insert/update points
-CREATE POLICY "Admins can manage points" ON user_points
-  FOR ALL USING (
+-- Users can create their own points record
+CREATE POLICY "Users can create their own points" ON user_points
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Only admins can update points
+CREATE POLICY "Admins can update points" ON user_points
+  FOR UPDATE USING (
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.id = auth.uid()

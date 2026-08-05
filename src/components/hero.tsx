@@ -240,7 +240,7 @@ export const Hero = () => {
         >
             {/* Optimized Background Image */}
             <Image
-                src="/hero.webp"
+                src="/bg5.png"
                 alt="Terrah Qbank"
                 fill
                 priority
@@ -265,15 +265,15 @@ export const Hero = () => {
                             Engineered for High Performance
                         </h2>
                         <p ref={desc1Ref} className="mx-auto mt-3 max-w-2xl text-sm md:text-lg white-text">
-                           Elevate your preparation with premium mock tests, real-time leaderboards, and AI-driven performance insights designed for top-tier candidates.
+                           Elevate your Qbankaration with premium mock tests, real-time leaderboards, and AI-driven performance insights designed for top-tier candidates.
                         </p>
                     </div>
                     <div className="load-anim text-center">
                         <Image
-                            src="/favicon.png"
+                            src="/favicon-hd.png"
                             alt="logo"
-                            width={30}
-                            height={30}
+                            width={50}
+                            height={50}
                             className="object-contain mx-auto mb-1 jelly"
                         />
                         <div className="ml-[10px]">
@@ -295,10 +295,10 @@ export const Hero = () => {
                     </div>
                     <div className="load-anim text-center skip cursor-pointer" onClick={handleSkip}>
                         <Image
-                            src="/favicon.png"
+                            src="/favicon-hd.png"
                             alt="logo"
-                            width={30}
-                            height={30}
+                            width={50}
+                            height={50}
                             className="object-contain mx-auto mb-1 jelly"
                         />
                         <div>

@@ -3,38 +3,89 @@
 import { useEffect, useState } from 'react';
 import { Card, CardBody, Button, Badge } from '@/components/ui';
 import { usePoints } from '@/context/PointsContext';
-import { Trophy, Gift, Sparkles, History, ArrowRight } from 'lucide-react';
+import { Trophy, Gift, Sparkles, History, AlertCircle } from 'lucide-react';
 import UserLayout from '@/app/user-layout';
+
+type RewardType = 'points' | 'plan' | 'none' | null;
 
 export default function RewardsPage() {
   const { availablePoints, canSpin, spinCost, spinHistory, loading, spin, refreshPoints, redeemPoints } = usePoints();
   const [spinning, setSpinning] = useState(false);
-  const [currentReward, setCurrentReward] = useState<any>(null);
+  const [rewardType, setRewardType] = useState<RewardType>(null);
+  const [rewardValue, setRewardValue] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const [showResult, setShowResult] = useState(false);
 
   const handleSpin = async () => {
     if (!canSpin || spinning) return;
 
     setSpinning(true);
+    setError('');
     setShowResult(false);
+    setRewardType(null);
     
-    const result = await spin();
-    
-    if (result.success) {
-      setCurrentReward(result.reward);
-      setShowResult(true);
-      await refreshPoints();
+    try {
+      const result = await spin();
+      
+      if (result.success && result.reward) {
+        setRewardType(result.reward.type);
+        setRewardValue(result.reward.value);
+        setShowResult(true);
+        await refreshPoints();
+      } else if (!result.success) {
+        setError(result.error || 'Something went wrong. Please try again.');
+      }
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSpinning(false);
     }
-    
-    setSpinning(false);
   };
 
   const planRewards = [
-    { slug: 'starter', name: 'Starter', points: 100, color: 'bg-blue-500' },
-    { slug: 'pro', name: 'PRO', points: 200, color: 'bg-purple-500' },
-    { slug: 'elite', name: 'Elite', points: 300, color: 'bg-orange-500' },
-    { slug: 'premium', name: 'Premium', points: 400, color: 'bg-gradient-to-r from-yellow-400 to-yellow-600' },
+    { slug: 'starter', name: 'Starter', points: 100 },
+    { slug: 'pro', name: 'PRO', points: 200 },
+    { slug: 'elite', name: 'Elite', points: 300 },
+    { slug: 'premium', name: 'Premium', points: 400 },
   ];
+
+  const getRewardDisplay = () => {
+    if (!showResult || !rewardType) return null;
+
+    if (rewardType === 'points') {
+      return {
+        icon: '🎉',
+        title: 'Congratulations!',
+        message: `You won ${rewardValue} Points!`,
+        bgColor: 'bg-green-50',
+        textColor: 'text-green-800',
+      };
+    }
+
+    if (rewardType === 'plan') {
+      return {
+        icon: '🎉',
+        title: 'Congratulations!',
+        message: `You unlocked the ${rewardValue} Plan for 30 days!`,
+        bgColor: 'bg-purple-50',
+        textColor: 'text-purple-800',
+      };
+    }
+
+    if (rewardType === 'none') {
+      return {
+        icon: '😔',
+        title: 'Better luck next time!',
+        message: 'No reward this time. Try again!',
+        bgColor: 'bg-gray-50',
+        textColor: 'text-gray-800',
+      };
+    }
+
+    return null;
+  };
+
+  const rewardDisplay = getRewardDisplay();
 
   return (
     <UserLayout>
@@ -140,6 +191,14 @@ export default function RewardsPage() {
                     <div className="absolute left-1/2 top-0 h-0 w-0 -translate-x-1/2 -translate-y-2 border-l-[20px] border-r-[20px] border-t-[40px] border-l-transparent border-r-transparent border-t-yellow-400"></div>
                   </div>
 
+                  {/* Error Display */}
+                  {error && (
+                    <div className="mx-auto mb-6 max-w-md rounded-lg bg-red-50 p-4 text-red-800">
+                      <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+                      <p className="text-sm">{error}</p>
+                    </div>
+                  )}
+
                   {/* Spin Button */}
                   <Button
                     size="lg"
@@ -157,14 +216,11 @@ export default function RewardsPage() {
                   </Button>
 
                   {/* Result Display */}
-                  {showResult && currentReward && (
-                    <div className="mx-auto max-w-md rounded-lg bg-green-50 p-6 text-green-800">
-                      <Trophy className="mx-auto h-12 w-12 mb-2" />
-                      <h3 className="text-xl font-bold mb-2">Congratulations! 🎉</h3>
-                      <p className="text-lg">You won: <span className="font-semibold">{currentReward.value}</span></p>
-                      {currentReward.type === 'plan' && (
-                        <p className="mt-2 text-sm">Your plan has been upgraded!</p>
-                      )}
+                  {rewardDisplay && (
+                    <div className={`mx-auto max-w-md rounded-lg p-6 ${rewardDisplay.bgColor} ${rewardDisplay.textColor}`}>
+                      <div className="text-4xl mb-2">{rewardDisplay.icon}</div>
+                      <h3 className="text-xl font-bold mb-2">{rewardDisplay.title}</h3>
+                      <p className="text-lg">{rewardDisplay.message}</p>
                     </div>
                   )}
 

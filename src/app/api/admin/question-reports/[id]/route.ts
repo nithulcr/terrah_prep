@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { authenticateAdmin } from '@/lib/supabase/server';
 import { questionReportsService } from '@/lib/services/question-reports.service';
 
 export async function PUT(
@@ -7,63 +7,97 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createServerClient();
+    console.log('=== Admin API: PUT /api/admin/question-reports/[id] ===');
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Use unified authentication helper
+    const auth = await authenticateAdmin(request);
+    
+    if (auth.error) {
+      console.error('Admin API: Auth failed:', auth.error);
+      return NextResponse.json({ 
+        success: false,
+        error: auth.error,
+        debug: { 
+          userId: auth.user?.id,
+          userEmail: auth.user?.email,
+          profileId: auth.profile?.id,
+          profileRole: auth.profile?.role
+        }
+      }, { status: auth.error === 'Unauthorized' ? 401 : 403 });
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
-    }
+    const supabase = auth.supabase;
 
     const body = await request.json();
     const { action, rewardPoints } = body;
 
     const reportId = parseInt(params.id);
 
+    console.log('Admin API: Action request:', { reportId, action, rewardPoints });
+
     if (action === 'approve') {
       if (!rewardPoints || rewardPoints < 1) {
-        return NextResponse.json({ error: 'Reward points must be at least 1' }, { status: 400 });
+        return NextResponse.json({ 
+          success: false,
+          error: 'Reward points must be at least 1' 
+        }, { status: 400 });
       }
 
-      const result = await questionReportsService.approveReport(reportId, rewardPoints);
+      const result = await questionReportsService.approveReport(
+        supabase,
+        reportId,
+        rewardPoints,
+        auth.user.id
+      );
+
+      console.log('Admin API: Approve result:', { success: result.success, error: result.error });
 
       if (!result.success) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
+        return NextResponse.json({ 
+          success: false,
+          error: result.error || 'Failed to approve report',
+          debug: result.debug
+        }, { status: 400 });
       }
 
       return NextResponse.json({ 
         success: true, 
-        message: 'Report approved and points awarded' 
+        message: 'Report approved and points awarded successfully' 
       });
     } else if (action === 'reject') {
-      const result = await questionReportsService.rejectReport(reportId);
+      const result = await questionReportsService.rejectReport(
+        supabase,
+        reportId,
+        auth.user.id
+      );
+
+      console.log('Admin API: Reject result:', { success: result.success, error: result.error });
 
       if (!result.success) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
+        return NextResponse.json({ 
+          success: false,
+          error: result.error || 'Failed to reject report',
+          debug: result.debug
+        }, { status: 400 });
       }
 
       return NextResponse.json({ 
         success: true, 
-        message: 'Report rejected' 
+        message: 'Report rejected successfully' 
       });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error('Error in PUT /api/admin/question-reports/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false,
+      error: 'Invalid action' 
+    }, { status: 400 });
+  } catch (error: any) {
+    console.error('Admin API: Unexpected error in PUT:', error);
+    return NextResponse.json({ 
+      success: false,
+      error: 'Internal server error',
+      debug: { message: error.message, stack: error.stack }
+    }, { status: 500 });
   }
 }
 
@@ -72,45 +106,55 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createServerClient();
+    console.log('=== Admin API: GET /api/admin/question-reports/[id] ===');
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Use unified authentication helper
+    const auth = await authenticateAdmin(request);
+    
+    if (auth.error) {
+      console.error('Admin API: Auth failed:', auth.error);
+      return NextResponse.json({ 
+        success: false,
+        error: auth.error,
+        debug: { 
+          userId: auth.user?.id,
+          userEmail: auth.user?.email,
+          profileId: auth.profile?.id,
+          profileRole: auth.profile?.role
+        }
+      }, { status: auth.error === 'Unauthorized' ? 401 : 403 });
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const supabase = auth.supabase;
 
     const reportId = parseInt(params.id);
 
-    const { data: report, error } = await supabase
-      .from('question_reports')
-      .select(`
-        *,
-        question:questions(question, category:categories(name)),
-        user:profiles(email, full_name)
-      `)
-      .eq('id', reportId)
-      .single();
+    console.log('Admin API: Fetching report details for ID:', reportId);
 
-    if (error || !report) {
-      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    const result = await questionReportsService.getReportById(supabase, reportId);
+
+    console.log('Admin API: Service result:', { success: result.success, error: result.error });
+
+    if (!result.success) {
+      return NextResponse.json({ 
+        success: false,
+        error: result.error || 'Report not found',
+        debug: result.debug
+      }, { status: 404 });
     }
 
-    return NextResponse.json({ report });
-  } catch (error) {
-    console.error('Error in GET /api/admin/question-reports/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.log('Admin API: Success - returning report details');
+    
+    return NextResponse.json({ 
+      success: true,
+      report: result.report
+    });
+  } catch (error: any) {
+    console.error('Admin API: Unexpected error in GET [id]:', error);
+    return NextResponse.json({ 
+      success: false,
+      error: 'Internal server error',
+      debug: { message: error.message, stack: error.stack }
+    }, { status: 500 });
   }
 }

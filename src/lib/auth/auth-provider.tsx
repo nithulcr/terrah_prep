@@ -62,20 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthProvider: Error fetching profile:', error);
       }
       
-      // Fetch plan data if profile exists
+      // Fetch plan data if profile exists - MUST complete before setting profile
       if (userProfile?.plan_slug) {
-        const { data: plan } = await supabase
+        const { data: plan, error: planError } = await supabase
           .from('plans')
           .select('*')
           .eq('slug', userProfile.plan_slug)
           .maybeSingle();
         
+        if (planError) {
+          console.error('AuthProvider: Error fetching plan:', planError);
+        }
+        
         if (plan) {
+          console.log('AuthProvider: Plan loaded for', userProfile.plan_slug, ':', plan);
           (userProfile as any).plan = plan;
+        } else {
+          console.warn('AuthProvider: Plan not found for slug:', userProfile.plan_slug);
         }
       }
       
-      console.log('AuthProvider: Profile fetched:', userProfile);
+      console.log('AuthProvider: Profile fetched with plan:', userProfile);
       setProfile(userProfile);
     } catch (error) {
       console.error('AuthProvider: Error fetching profile:', error);

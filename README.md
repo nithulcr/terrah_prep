@@ -34,7 +34,7 @@ The premium exam mock test platform designed for Kerala PSC, SSC, Railway, Banki
 ## 📦 Project Structure
 
 ```
-terrah-prep/
+terrah-Qbank/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── admin/             # Admin panel pages
@@ -94,7 +94,7 @@ terrah-prep/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd terrah-prep
+   cd terrah-Qbank
    ```
 
 2. **Install dependencies**

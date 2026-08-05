@@ -29,6 +29,13 @@ export const Header: React.FC = () => {
 
   ];
 
+  const userNavLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/rewards', label: 'Rewards' },
+    { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/profile', label: 'Profile' },
+  ];
+
   return (
     <header className="fixed w-full shadow-sm header py-3 top-0 z-50 ">
       <div className="max-w-[1400px] mx-auto  z-9 relative">
@@ -44,26 +51,21 @@ export const Header: React.FC = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
+                  <AnimatedButton href="/dashboard" label="Dashboard" className="w-fit" />
 
-                <AnimatedButton href="/dashboard" label=" Dashboard" className="w-fit" />
-
-
+                
                 <AnimatedButton onClick={handleSignOut} label="Sign Out" className="w-fit btn-2" />
                 {profile?.role === 'admin' && (
-                  <Link href="/admin">
-                    <Button variant="primary" size="md" className="uppercase">
-                      Admin
-                    </Button>
-                  </Link>
+                  <AnimatedButton href="/admin" label="Admin" className="w-fit btn-3" />
                 )}
-
               </div>
             ) : (
               <div className="flex items-center space-x-3">
 
-                <div className="flex items-center flex-wrap justify-center gap-2">
+                <div className="flex items-center flex-wrap justify-center gap-4">
                   <AnimatedButton href="/auth/login" label="Login" className="w-fit" />
                   <AnimatedButton href="/auth/login" label="Sign Up" className="w-fit btn-2" />
+
 
                 </div>
               </div>
@@ -103,9 +105,18 @@ export const Header: React.FC = () => {
               <div className="pt-3 border-t border-gray-200 flex gap-2 flex-wrap">
                 {user ? (
                   <>
-
-
-                    <AnimatedButton href="/dashboard" label=" Dashboard" className="w-fit" />
+                    {userNavLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex-1"
+                      >
+                        <Button variant="ghost" className="w-full">
+                          {link.label}
+                        </Button>
+                      </Link>
+                    ))}
                     <AnimatedButton onClick={() => {
                       handleSignOut();
                       setIsMobileMenuOpen(false);
@@ -118,7 +129,6 @@ export const Header: React.FC = () => {
                         </Button>
                       </Link>
                     )}
-
                   </>
                 ) : (
                   <>

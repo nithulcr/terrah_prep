@@ -200,7 +200,7 @@ export const Values = () => {
                 className="bg-black text-white relative min-h-screen  overflow-hidden py-[60px]  py-[100px]  w-full"
             >
                 {/* Background Decorative Elements */}
-                <div className="relative  px-4  w-full h-full max-w-[1360px] mx-auto flex  flex-col   ">
+                {/* <div className="relative  px-4  w-full h-full max-w-[1360px] mx-auto flex  flex-col   ">
 
                     <div className="relative z-10 max-w-2xl">
                         
@@ -210,40 +210,18 @@ export const Values = () => {
                         >
                            Invest in Your Future
                         </h2>
-                        <h5 ref={subheaderRef} className=" text-[16px] md:text-[19px]  font-semibold"> Join 100+ candidates who have already unlocked Pro features.<br />Plans start from as low as ₹99/month.</h5>
+                        <h5 ref={subheaderRef} className=" text-[16px] md:text-[20px]"> Join 100+ candidates who have already unlocked Pro features.<br />Plans start from as low as ₹99/month.</h5>
      
-                        <p ref={desc2Ref} className=" max-w-[880px]  text-[14px] md:text-[16px]  opacity-70 mt-3  tracking-normal">
-
-
-                          
-                          Empowering Kerala's next generation of public servants with technology and elite content. Your success journey starts here.
-
-                        </p>
-                        {/* <div className="max-w-[450px] mt-6 md:mt-10 rounded-[30px] bg-gradient-to-r from-[var(--yellow)] to-[var(--green)] p-[1px]">
-                            <div className="flex  items-center p-[4px] rounded-[30px] bg-[#fff]">
-                                <input
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    className="flex-1 bg-transparent px-4 py-2 outline-none  text-[14px]"
-                                />
-                                <button className="bg-gradient-to-r from-[var(--yellow)] to-[var(--green)] text-[var(--text2)]  text-[14px]  px-4 py-3 rounded-full font-semibold  flex items-center gap-1 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(183,245,0,0.3)]">
-                                    Claim Your Super ID
-                                    <svg className="hidden sm:block" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M15.125 6.875L5.5 16.5" stroke="#04393A" strokeWidth="1.5" strokeLinecap="round" />
-                                        <path d="M7.3335 5.67225C7.3335 5.67225 14.7107 5.05036 15.8303 6.16989C16.9499 7.28941 16.3278 14.6667 16.3278 14.6667" stroke="#04393A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-
-                                </button>
-                            </div>
-                        </div> */}
+                      
+                       
                         <div  ref={btnRef}>
-                        <AnimatedButton  href="/contact" label="View Our Plans" className="w-fit mt-8" />
+                        <AnimatedButton  href="/plans" label="View Our Plans" className="w-fit mt-8" />
                         </div>
 
 
 
                     </div>
-                </div>
+                </div> */}
                 <div ref={scrollContainerRef} className="scroll-container relative overflow-hidden mt-10 md:mt-18 flex flex-col gap-15">
 
 
@@ -275,15 +253,15 @@ export const Values = () => {
                         <div className="flex justify-center  flex-wrap sm:grid grid-cols-3 gap-x-4 text-center gap-y-7">
                             <div className="text-center flex flex-col w-[calc(50%-10px)] sm:w-full">
                                 <h3 className="text-gradient text-4xl md:text-5xl font-bold mx-auto">10,000+</h3>
-                                <p className="text-sm  mt-2 font-semibold uppercase ">Questions</p>
+                                <p className="  mt-2 font-semibold uppercase ">Questions</p>
                             </div>
                             <div className="text-center flex flex-col w-[calc(50%-10px)] sm:w-full">
                                 <h3 className="text-gradient text-4xl md:text-5xl font-bold mx-auto">500+</h3>
-                                <p className="text-sm  mt-2 font-semibold uppercase ">Mock Tests</p>
+                                <p className="  mt-2 font-semibold uppercase ">Mock Tests</p>
                             </div>
                             <div className="text-center flex flex-col w-[calc(50%-10px)] sm:w-full">
                                 <h3 className="text-gradient text-4xl md:text-5xl font-bold mx-auto">1000+</h3>
-                                <p className="text-sm  mt-2 font-semibold uppercase ">Active Users</p>
+                                <p className="  mt-2 font-semibold uppercase ">Active Users</p>
                             </div>
                         </div>
                       

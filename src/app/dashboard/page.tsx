@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 Welcome back, {user?.email?.split('@')[0]}!
               </h1>
               <p className="mt-3 text-lg text-slate-600">
-                Track your progress and continue your preparation
+                Track your progress and continue your Qbankaration
               </p>
             </div>
             {loading ? (
@@ -191,7 +191,7 @@ export default function DashboardPage() {
               </div>
               {getRemainingTests() !== null && (
                 <p className="text-sm text-slate-600 mt-2">
-                  {getRemainingTests()} remaining this month
+                  {getRemainingTests()} remaining rathis month
                 </p>
               )}
             </CardBody>

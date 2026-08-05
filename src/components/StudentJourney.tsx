@@ -44,7 +44,7 @@ const steps = [
     icon: Trophy,
     title: 'Achieve Success',
     description:
-      'Crack your dream government exam with consistent preparation.',
+      'Crack your dream government exam with consistent Qbankaration.',
   },
 ];
 
@@ -68,7 +68,7 @@ export default function StudentJourney() {
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
-            Every successful candidate follows a journey. Terrah Prep helps
+            Every successful candidate follows a journey. Terrah Qbank helps
             you at every stage—from your first practice question to your
             dream government job.
           </p>

@@ -87,13 +87,13 @@ export default function PricingPreview() {
 
           <h2 className="mt-6 text-5xl font-bold text-white">
 
-            Choose Your Preparation Plan
+            Choose Your Qbankaration Plan
 
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
 
-            Start free and upgrade anytime as your preparation grows.
+            Start free and upgrade anytime as your Qbankaration grows.
 
           </p>
 

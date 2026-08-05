@@ -64,29 +64,27 @@ export default function PlatformFeatures() {
   return (
     <section className="relative overflow-hidden bg-[#09090B] py-24">
 
-      <div className="absolute left-0 top-0 h-80 w-80 rounded-full bg-[#fe7402]/10 blur-[180px]" />
-      <div className="absolute right-0 bottom-0 h-96 w-96 rounded-full bg-orange-500/5 blur-[180px]" />
+    
+      <div className="relative mx-auto max-w-7xl px-6 grid gap-8 lg:gap-20 lg:grid-cols-2">
 
-      <div className="relative mx-auto max-w-7xl px-6">
-
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl">
 
           <span className="rounded-full border border-[#fe7402]/30 bg-[#fe7402]/10 px-4 py-2 text-sm font-medium text-[#fe7402]">
             Platform Features
           </span>
 
           <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
-            Everything You Need To Prepare Smarter
+            Everything You Need To Qbankare Smarter
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
-            Terrah Prep is more than a question bank. It's a complete preparation
+            Terrah Qbank is more than a question bank. It's a complete Qbankaration
             platform designed to help you crack competitive exams with confidence.
           </p>
 
         </div>
 
-        <div className="mt-20 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+        <div className=" grid gap-8">
 
           {features.map((feature, index) => {
 

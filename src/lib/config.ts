@@ -10,7 +10,7 @@ export const config = {
       process.env.NEXT_PUBLIC_APP_URL ||
       (isDevelopment
         ? 'http://localhost:3000'
-        : 'https://terrah-prepare.vercel.app'),
+        : 'https://terrah-Qbankare.vercel.app'),
   },
 
   supabase: {

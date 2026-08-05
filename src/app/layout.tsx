@@ -7,6 +7,8 @@ import { ScrollDetector } from "@/components/ScrollDetector";
 import { AuthProvider } from '@/lib/auth/auth-provider';
 import { SettingsProvider } from '@/lib/contexts/settings-context';
 import { ToastProvider } from '@/components/ui/toast-provider';
+import { PointsProvider } from '@/context/PointsContext';
+import LayoutContent from '@/components/layout/layout-content';
 
 const manrope = Manrope({ 
   subsets: ["latin"],
@@ -16,7 +18,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: 'Terrah Qbank - Premium Exam Mock Test Platform',
   description: 'The premium exam mock test platform for Kerala PSC, SSC, Railway, Banking, and UPSC aspirants. Practice with quality questions and track your progress.',
-  keywords: 'Kerala PSC, SSC, Railway, Banking, UPSC, mock test, exam preparation, online test',
+  keywords: 'Kerala PSC, SSC, Railway, Banking, UPSC, mock test, exam Qbankaration, online test',
   icons: {
     icon: "/favicon.png",
   },
@@ -35,10 +37,11 @@ export default function RootLayout({
           <ToastProvider>
             <AuthProvider>
               <SettingsProvider>
-                <main className="flex-grow">
-                  {children}
-                </main>
-                <Footer />
+                <PointsProvider>
+                  <LayoutContent>
+                    {children}
+                  </LayoutContent>
+                </PointsProvider>
               </SettingsProvider>
             </AuthProvider>
           </ToastProvider>

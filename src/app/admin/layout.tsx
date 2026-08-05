@@ -71,6 +71,7 @@ export default function AdminLayout({
     { href: '/admin/categories', label: 'Categories', icon: FolderTree },
     { href: '/admin/import', label: 'Import', icon: Upload },
     { href: '/admin/test-sets', label: 'Test Sets', icon: Upload },
+    { href: '/admin/question-reports', label: 'Question Reports', icon: Shield },
 
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/batches', label: 'Batches', icon: ClipboardList },
@@ -102,9 +103,8 @@ export default function AdminLayout({
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <Link href="/admin" className="flex items-center space-x-2">
-            <Shield className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">Admin Panel</span>
+          <Link href="/" className="flex items-center space-x-2 mx-auto">
+            <img src="/logo2.png" alt="TerrahQbank" className="w-[160px] h-auto " />
           </Link>
           <button
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100"

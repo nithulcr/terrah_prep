@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { pointsService } from '@/lib/services/points.service';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createServerClient(request);
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createServerClient(request);
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

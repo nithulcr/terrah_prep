@@ -2,20 +2,6 @@ import { supabase } from '@/lib/supabase/client';
 import { LuckySpinHistory } from '@/types';
 
 export const luckySpinService = {
-  /**
-   * Possible rewards for lucky spin
-   */
-  REWARDS: [
-    { type: 'points', value: '10 Points', points: 10, probability: 30 },
-    { type: 'points', value: '20 Points', points: 20, probability: 25 },
-    { type: 'points', value: '50 Points', points: 50, probability: 15 },
-    { type: 'plan', value: 'Starter', planSlug: 'starter', probability: 10 },
-    { type: 'plan', value: 'PRO', planSlug: 'pro', probability: 5 },
-    { type: 'plan', value: 'Elite', planSlug: 'elite', probability: 3 },
-    { type: 'plan', value: 'Premium', planSlug: 'premium', probability: 2 },
-    { type: 'none', value: 'No Reward', points: 0, probability: 10 },
-  ],
-
   SPIN_COST: 100,
 
   /**
@@ -75,7 +61,7 @@ export const luckySpinService = {
   },
 
   /**
-   * Perform lucky spin
+   * Perform lucky spin using RPC function
    */
   async spin(): Promise<{ success: boolean; reward?: any; error?: string }> {
     try {
@@ -85,65 +71,40 @@ export const luckySpinService = {
         return { success: false, error: 'Please login to spin' };
       }
 
-      // Check if user has enough points
-      const canSpinResult = await this.canSpin();
-      if (!canSpinResult) {
-        return { success: false, error: `You need at least ${this.SPIN_COST} points to spin` };
-      }
-
-      // Deduct spin cost
-      const { error: deductError } = await supabase.rpc('deduct_points_from_user', {
+      // Call the RPC function
+      const { data, error } = await supabase.rpc('spin_lucky_wheel', {
         p_user_id: user.id,
-        p_points: this.SPIN_COST,
-        p_transaction_type: 'lucky_spin',
-        p_description: 'Lucky Spin Wheel - 100 points deducted',
       });
 
-      if (deductError) {
-        console.error('Error deducting points:', deductError);
-        return { success: false, error: 'Failed to deduct points' };
+      if (error) {
+        console.error('Error calling spin_lucky_wheel:', error);
+        return { success: false, error: 'Something went wrong. Please try again.' };
       }
 
-      // Determine reward based on probability
-      const reward = this._selectReward();
+      // Parse the JSON result
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
 
-      // If reward is a plan, redeem it
-      if (reward.type === 'plan' && reward.planSlug) {
-        const { error: redeemError } = await supabase.rpc('redeem_plan_from_spin', {
-          p_user_id: user.id,
-          p_plan_slug: reward.planSlug,
-        });
-
-        if (redeemError) {
-          console.error('Error redeeming plan:', redeemError);
-          // Still record the spin, but plan redemption failed
+      if (!result.success) {
+        if (result.error === 'NOT_ENOUGH_POINTS') {
+          return { 
+            success: false, 
+            error: result.message || 'You need at least 100 points to spin the Lucky Wheel.'
+          };
         }
-      }
-
-      // Record spin history
-      const { error: historyError } = await supabase
-        .from('lucky_spin_history')
-        .insert({
-          user_id: user.id,
-          reward_type: reward.type,
-          reward_value: reward.value,
-          points_deducted: this.SPIN_COST,
-        });
-
-      if (historyError) {
-        console.error('Error recording spin history:', historyError);
+        return { success: false, error: result.message || 'Something went wrong. Please try again.' };
       }
 
       return { 
         success: true, 
         reward: {
-          ...reward,
-          pointsDeducted: this.SPIN_COST,
+          type: result.reward_type,
+          value: result.reward_value,
+          pointsDeducted: result.points_deducted,
         }
       };
     } catch (error) {
       console.error('Error in spin:', error);
-      return { success: false, error: 'Failed to spin' };
+      return { success: false, error: 'Something went wrong. Please try again.' };
     }
   },
 
@@ -175,23 +136,5 @@ export const luckySpinService = {
       console.error('Error in getSpinHistory:', error);
       return [];
     }
-  },
-
-  /**
-   * Select a reward based on probability
-   */
-  _selectReward(): any {
-    const random = Math.random() * 100;
-    let cumulative = 0;
-
-    for (const reward of this.REWARDS) {
-      cumulative += reward.probability;
-      if (random <= cumulative) {
-        return reward;
-      }
-    }
-
-    // Fallback to no reward
-    return this.REWARDS[this.REWARDS.length - 1];
   },
 };

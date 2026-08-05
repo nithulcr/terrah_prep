@@ -83,7 +83,7 @@ export default function PricingPage() {
               Choose Your Plan
             </h1>
             <p className="mt-3 text-lg text-slate-600">
-              Select the perfect plan for your preparation needs
+              Select the perfect plan for your Qbankaration needs
             </p>
           </div>
         </div>

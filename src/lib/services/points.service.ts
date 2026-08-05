@@ -30,6 +30,8 @@ export const pointsService = {
 
           if (insertError) {
             console.error('Error creating user points:', insertError);
+            // If we can't create points due to RLS, return null
+            // The UI should handle this gracefully
             return null;
           }
 
@@ -66,6 +68,11 @@ export const pointsService = {
         .limit(limit);
 
       if (error) {
+        // If table doesn't exist (406 error), return empty array
+        if (error.code === '42P01' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          console.error('Point transactions table does not exist. Please apply database migrations.');
+          return [];
+        }
         console.error('Error fetching transactions:', error);
         return [];
       }

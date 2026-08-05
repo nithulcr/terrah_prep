@@ -13,7 +13,7 @@ const exams = [
   {
     icon: GraduationCap,
     title: 'Kerala PSC',
-    description: 'Complete preparation for LDC, LGS, Degree Level, Secretariat Assistant, Police and more.',
+    description: 'Complete Qbankaration for LDC, LGS, Degree Level, Secretariat Assistant, Police and more.',
 
   },
   {
@@ -25,7 +25,7 @@ const exams = [
   {
     icon: Train,
     title: 'Railway',
-    description: 'Prepare for RRB NTPC, Group D, ALP and Technician exams.',
+    description: 'Qbankare for RRB NTPC, Group D, ALP and Technician exams.',
     status: 'Coming Soon',
   },
   {
@@ -37,7 +37,7 @@ const exams = [
   {
     icon: Award,
     title: 'UPSC',
-    description: 'Civil Services Preliminary and General Studies preparation.',
+    description: 'Civil Services Preliminary and General Studies Qbankaration.',
     status: 'Coming Soon',
   },
 ];
@@ -57,12 +57,12 @@ export default function ExamCategories() {
           </span>
 
           <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
-            Prepare For Every Competitive Exam
+            Qbankare For Every Competitive Exam
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
             Start your journey with Kerala PSC and explore more competitive
-            exams as Terrah Prep continues to grow.
+            exams as Terrah Qbank continues to grow.
           </p>
 
         </div>

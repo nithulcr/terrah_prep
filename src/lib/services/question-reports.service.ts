@@ -1,139 +1,301 @@
-import { supabase } from '@/lib/supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { QuestionReport } from '@/types';
 
 export const questionReportsService = {
   /**
    * Submit a new question report
    */
-  async submitReport(questionId: number, reason: string, comment?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  async submitReport(
+    supabase: SupabaseClient,
+    questionId: number,
+    reason: string,
+    comment?: string,
+    userId?: string
+  ): Promise<{ success: boolean; message?: string; error?: string; debug?: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { success: false, error: 'Please login to report questions' };
+      if (!userId) {
+        return { success: false, error: 'User ID is required' };
       }
 
-      // Check if user already reported this question
-      const { data: existingReport } = await supabase
+      // Verify question exists
+      const { data: question, error: questionError } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('id', questionId)
+        .single();
+
+      if (questionError || !question) {
+        return { 
+          success: false, 
+          error: 'Question not found',
+          debug: { questionError: questionError?.message, questionId }
+        };
+      }
+
+      // Check for duplicate report
+      const { data: existingReport, error: duplicateError } = await supabase
         .from('question_reports')
         .select('id')
         .eq('question_id', questionId)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       if (existingReport) {
-        return { success: false, error: 'You have already reported this question.' };
+        return { 
+          success: false, 
+          error: 'You have already reported this question.',
+          debug: { existingReportId: existingReport.id }
+        };
       }
 
       // Check daily limit (10 reports per day)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const { count: reportsToday } = await supabase
+      const { count: reportsToday, error: countError } = await supabase
         .from('question_reports')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .gte('created_at', today.toISOString());
 
+      if (countError) {
+        console.error('Error checking daily limit:', countError);
+      }
+
       if (reportsToday && reportsToday >= 10) {
-        return { success: false, error: 'You have reached the maximum of 10 reports per day.' };
+        return { 
+          success: false, 
+          error: 'You have reached the maximum of 10 reports per day.',
+          debug: { reportsToday }
+        };
       }
 
       // Submit report
-      const { error } = await supabase
+      const { data: newReport, error: insertError } = await supabase
         .from('question_reports')
         .insert({
           question_id: questionId,
-          user_id: user.id,
+          user_id: userId,
           reason,
           comment: comment || null,
-        });
+          status: 'pending',
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error submitting report:', error);
-        return { success: false, error: 'Failed to submit report' };
+      if (insertError) {
+        console.error('Error submitting report:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: insertError.message || 'Failed to submit report',
+          debug: {
+            code: insertError.code,
+            details: insertError.details,
+            hint: insertError.hint,
+          }
+        };
       }
 
-      return { success: true, message: 'Report submitted successfully! Thank you for helping us improve.' };
-    } catch (error) {
+      return { 
+        success: true, 
+        message: 'Report submitted successfully! Thank you for helping us improve.',
+        debug: { reportId: newReport.id }
+      };
+    } catch (error: any) {
       console.error('Error in submitReport:', error);
-      return { success: false, error: 'Failed to submit report' };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to submit report',
+        debug: { stack: error.stack }
+      };
     }
   },
 
   /**
    * Get all reports (admin only)
    */
-  async getAllReports(): Promise<QuestionReport[]> {
+  async getAllReports(
+    supabase: SupabaseClient,
+    filters?: {
+      status?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<{ success: boolean; reports?: QuestionReport[]; error?: string; debug?: any; total?: number }> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('question_reports')
         .select(`
           *,
-          question:questions(question, category:categories(name)),
-          user:profiles(email, full_name)
-        `)
-        .order('created_at', { ascending: false });
+          question:questions(
+            question, 
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            correct_option,
+            explanation,
+            category:categories(name)
+          ),
+          user:profiles!question_reports_user_id_fkey(email, full_name),
+          reviewer:profiles!question_reports_reviewed_by_fkey(email, full_name)
+        `, { count: 'exact' });
 
-      if (error) {
-        console.error('Error fetching reports:', error);
-        return [];
+      // Apply filters
+      if (filters?.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
       }
 
-      return data || [];
-    } catch (error) {
+      if (filters?.search) {
+        query = query.or(`question.question.ilike.%${filters.search}%,user.email.ilike.%${filters.search}%,reason.ilike.%${filters.search}%`);
+      }
+
+      // Pagination
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 20;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      query = query.order('created_at', { ascending: false }).range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('Error fetching reports:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: error.message || 'Failed to fetch reports',
+          debug: {
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          }
+        };
+      }
+
+      // Transform data to ensure user and reviewer are always present
+      const reports = (data || []).map((report: any) => ({
+        ...report,
+        user: report.user || { email: 'Unknown', full_name: 'Unknown' },
+        reviewer: report.reviewer || null,
+      }));
+
+      return { 
+        success: true, 
+        reports,
+        total: count || 0,
+      };
+    } catch (error: any) {
       console.error('Error in getAllReports:', error);
-      return [];
+      return { 
+        success: false, 
+        error: error.message || 'Failed to fetch reports',
+        debug: { stack: error.stack }
+      };
     }
   },
 
   /**
-   * Get pending reports (admin only)
+   * Get report by ID (admin only)
    */
-  async getPendingReports(): Promise<QuestionReport[]> {
+  async getReportById(
+    supabase: SupabaseClient,
+    reportId: number
+  ): Promise<{ success: boolean; report?: QuestionReport; error?: string; debug?: any }> {
     try {
       const { data, error } = await supabase
         .from('question_reports')
         .select(`
           *,
-          question:questions(question, category:categories(name)),
-          user:profiles(email, full_name)
+          question:questions(
+            question, 
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            correct_option,
+            explanation,
+            category:categories(name)
+          ),
+          user:profiles!question_reports_user_id_fkey(email, full_name),
+          reviewer:profiles!question_reports_reviewed_by_fkey(email, full_name)
         `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .eq('id', reportId)
+        .single();
 
-      if (error) {
-        console.error('Error fetching pending reports:', error);
-        return [];
+      if (error || !data) {
+        console.error('Error fetching report:', {
+          code: error?.code,
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: error?.message || 'Report not found',
+          debug: {
+            code: error?.code,
+            details: error?.details,
+            reportId,
+          }
+        };
       }
 
-      return data || [];
-    } catch (error) {
-      console.error('Error in getPendingReports:', error);
-      return [];
+      // Transform data to ensure user and reviewer are always present
+      const report = {
+        ...data,
+        user: data.user || { email: 'Unknown', full_name: 'Unknown' },
+        reviewer: data.reviewer || null,
+      };
+      
+      return { success: true, report };
+    } catch (error: any) {
+      console.error('Error in getReportById:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to fetch report',
+        debug: { stack: error.stack }
+      };
     }
   },
 
   /**
    * Approve a report and reward points (admin only)
    */
-  async approveReport(reportId: number, rewardPoints: number): Promise<{ success: boolean; error?: string }> {
+  async approveReport(
+    supabase: SupabaseClient,
+    reportId: number,
+    rewardPoints: number,
+    adminId: string
+  ): Promise<{ success: boolean; error?: string; debug?: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { success: false, error: 'Unauthorized' };
-      }
-
       // Get report details
       const { data: report, error: reportError } = await supabase
         .from('question_reports')
-        .select('user_id')
+        .select('user_id, question_id')
         .eq('id', reportId)
         .single();
 
       if (reportError || !report) {
-        return { success: false, error: 'Report not found' };
+        return { 
+          success: false, 
+          error: 'Report not found',
+          debug: { reportError: reportError?.message, reportId }
+        };
       }
 
       // Update report status
@@ -142,14 +304,27 @@ export const questionReportsService = {
         .update({
           status: 'approved',
           reward_points: rewardPoints,
-          reviewed_by: user.id,
+          reviewed_by: adminId,
           reviewed_at: new Date().toISOString(),
         })
         .eq('id', reportId);
 
       if (updateError) {
-        console.error('Error approving report:', updateError);
-        return { success: false, error: 'Failed to approve report' };
+        console.error('Error approving report:', {
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: updateError.message || 'Failed to approve report',
+          debug: {
+            code: updateError.code,
+            details: updateError.details,
+          }
+        };
       }
 
       // Add points to user using the database function
@@ -163,46 +338,85 @@ export const questionReportsService = {
       });
 
       if (pointsError) {
-        console.error('Error adding points:', pointsError);
-        // Note: Report is approved but points might not be added
+        console.error('Error adding points:', {
+          code: pointsError.code,
+          message: pointsError.message,
+          details: pointsError.details,
+          hint: pointsError.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: pointsError.message || 'Failed to add points',
+          debug: {
+            code: pointsError.code,
+            details: pointsError.details,
+          }
+        };
       }
 
-      return { success: true };
-    } catch (error) {
+      return { 
+        success: true,
+        debug: { 
+          reportId, 
+          userId: report.user_id, 
+          points: rewardPoints 
+        }
+      };
+    } catch (error: any) {
       console.error('Error in approveReport:', error);
-      return { success: false, error: 'Failed to approve report' };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to approve report',
+        debug: { stack: error.stack }
+      };
     }
   },
 
   /**
    * Reject a report (admin only)
    */
-  async rejectReport(reportId: number): Promise<{ success: boolean; error?: string }> {
+  async rejectReport(
+    supabase: SupabaseClient,
+    reportId: number,
+    adminId: string
+  ): Promise<{ success: boolean; error?: string; debug?: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { success: false, error: 'Unauthorized' };
-      }
-
       const { error } = await supabase
         .from('question_reports')
         .update({
           status: 'rejected',
-          reviewed_by: user.id,
+          reviewed_by: adminId,
           reviewed_at: new Date().toISOString(),
         })
         .eq('id', reportId);
 
       if (error) {
-        console.error('Error rejecting report:', error);
-        return { success: false, error: 'Failed to reject report' };
+        console.error('Error rejecting report:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+        
+        return { 
+          success: false, 
+          error: error.message || 'Failed to reject report',
+          debug: {
+            code: error.code,
+            details: error.details,
+          }
+        };
       }
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in rejectReport:', error);
-      return { success: false, error: 'Failed to reject report' };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to reject report',
+        debug: { stack: error.stack }
+      };
     }
   },
 };

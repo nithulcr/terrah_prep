@@ -5,14 +5,14 @@ import { ChevronDown } from 'lucide-react';
 
 const faqs = [
   {
-    question: 'Can I use Terrah Prep for free?',
+    question: 'Can I use Terrah Qbank for free?',
     answer:
       'Yes. Every new user gets access to the FREE plan with 100 lifetime practice questions. You can upgrade anytime for additional features.',
   },
   {
     question: 'Which exams are currently supported?',
     answer:
-      'Terrah Prep currently focuses on Kerala PSC. Support for SSC, Railway, Banking and UPSC will be added in future updates.',
+      'Terrah Qbank currently focuses on Kerala PSC. Support for SSC, Railway, Banking and UPSC will be added in future updates.',
   },
   {
     question: 'Can I practice mock tests?',
@@ -25,7 +25,7 @@ const faqs = [
       'If you report an incorrect question and our team approves the report, reward points will be credited to your account. These points can later be redeemed for subscription plans or Lucky Spin.',
   },
   {
-    question: 'Can I use Terrah Prep on multiple devices?',
+    question: 'Can I use Terrah Qbank on multiple devices?',
     answer:
       'Yes. Device limits depend on your subscription plan. Higher plans support more simultaneous devices.',
   },
@@ -57,7 +57,7 @@ export default function FAQSection() {
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
-            Everything you need to know about Terrah Prep.
+            Everything you need to know about Terrah Qbank.
           </p>
 
         </div>

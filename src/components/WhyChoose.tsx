@@ -63,7 +63,7 @@ export default function WhyChoose() {
         <div className="mx-auto max-w-3xl text-center">
 
           <span className="rounded-full border border-[#fe7402]/30 bg-[#fe7402]/10 px-4 py-2 text-sm font-medium text-[#fe7402]">
-            Why Choose Terrah Prep
+            Why Choose Terrah Qbank
           </span>
 
           <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
@@ -71,8 +71,8 @@ export default function WhyChoose() {
           </h2>
 
           <p className="mt-6 text-lg leading-8 text-slate-400">
-            Terrah Prep combines high-quality practice questions, realistic
-            mock tests and smart analytics to help you prepare with confidence.
+            Terrah Qbank combines high-quality practice questions, realistic
+            mock tests and smart analytics to help you Qbankare with confidence.
           </p>
 
         </div>

@@ -12,7 +12,7 @@ const testimonials = [
     role: 'Kerala PSC Aspirant',
     rating: 5,
     review:
-      'Terrah Prep helped me improve my confidence through daily practice and realistic mock tests.',
+      'Terrah Qbank helped me improve my confidence through daily practice and realistic mock tests.',
   },
   {
     name: 'Coming Soon',
@@ -26,7 +26,7 @@ const testimonials = [
     role: 'LDC Aspirant',
     rating: 5,
     review:
-      'The question quality and clean interface make Terrah Prep enjoyable to use every day.',
+      'The question quality and clean interface make Terrah Qbank enjoyable to use every day.',
   },
 ];
 
@@ -50,8 +50,8 @@ export default function Testimonials() {
           </h2>
 
           <p className="mt-6 text-lg text-slate-400">
-            Join a growing community of aspirants preparing smarter with
-            Terrah Prep.
+            Join a growing community of aspirants Qbankaring smarter with
+            Terrah Qbank.
           </p>
 
         </div>

@@ -9,10 +9,10 @@ import { Profile, Subscription, SubscriptionPlan } from '@/types';
 // ============================================
 
 /**
- * Prepare profile data for creation after signup
+ * Qbankare profile data for creation after signup
  * This should be called automatically via Supabase trigger or server action
  */
-export function prepareProfileData(userId: string, email: string, fullName?: string) {
+export function QbankareProfileData(userId: string, email: string, fullName?: string) {
   return {
     id: userId,
     email,

@@ -87,7 +87,7 @@ export const deviceSessionService = {
       return 'server-device-id';
     }
 
-    const storageKey = 'terrah-prep-device-id';
+    const storageKey = 'terrah-Qbank-device-id';
     let deviceId = localStorage.getItem(storageKey);
 
     if (!deviceId) {

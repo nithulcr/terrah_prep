@@ -42,7 +42,7 @@ export default function RewardsSection() {
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-400">
 
-            Terrah Prep rewards every meaningful contribution. Help us improve
+            Terrah Qbank rewards every meaningful contribution. Help us improve
             the question bank and unlock premium benefits using reward points.
 
           </p>
@@ -163,7 +163,7 @@ export default function RewardsSection() {
 
             <p className="mt-4 leading-8 text-slate-400">
 
-              Earn reward points by helping improve Terrah Prep. Once you
+              Earn reward points by helping improve Terrah Qbank. Once you
               collect enough points, redeem them for subscription plans or use
               them to spin the Lucky Wheel.
 
@@ -220,7 +220,7 @@ export default function RewardsSection() {
 
           <h3 className="text-4xl font-bold text-white">
 
-            Help Improve Terrah Prep & Get Rewarded
+            Help Improve Terrah Qbank & Get Rewarded
 
           </h3>
 

@@ -30,28 +30,19 @@ export interface PlanPermissions {
  *   // Show upgrade prompt
  * }
  */
-export function usePlanPermissions(): PlanPermissions {
+export function usePlanPermissions(): PlanPermissions & { loading: boolean } {
   const { profile, subscription } = useAuth();
 
-  return useMemo(() => {
-    // Default to FREE plan permissions if no profile
-    if (!profile?.plan_slug) {
-      return {
-        canBookmark: false,
-        canReviewAnswers: false,
-        canAnalytics: false,
-        canPerformanceDashboard: false,
-        canPdfDownload: false,
-        canPreviousYearQuestions: false,
-        canPrioritySupport: false,
-        canResultHistory: false,
-      };
-    }
-
+  const plan = useMemo(() => {
     // Get plan from subscription or profile
-    const plan = (subscription?.plan || profile) as any as Plan;
+    return (subscription?.plan || (profile as any)?.plan) as Plan | undefined;
+  }, [subscription, profile]);
 
-    if (!plan) {
+  const isLoading = !profile || !plan;
+
+  const permissions = useMemo(() => {
+    // Default to FREE plan permissions if no profile or plan not loaded yet
+    if (!profile?.plan_slug || !plan) {
       return {
         canBookmark: false,
         canReviewAnswers: false,
@@ -74,7 +65,12 @@ export function usePlanPermissions(): PlanPermissions {
       canPrioritySupport: plan.priority_support || false,
       canResultHistory: plan.allow_result_history || false,
     };
-  }, [profile, subscription]);
+  }, [profile, plan]);
+
+  return {
+    ...permissions,
+    loading: isLoading,
+  };
 }
 
 /**

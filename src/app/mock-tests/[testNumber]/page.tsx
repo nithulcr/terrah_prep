@@ -19,7 +19,7 @@ export default function MockTestPage() {
   const testNumber = Number(params.testNumber);
   const batchId = Number(searchParams.get("batchId"));
   const router = useRouter();
-  const { canBookmark, canReviewAnswers } = usePlanPermissions();
+  const { canBookmark, canReviewAnswers, loading: permissionsLoading } = usePlanPermissions();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
@@ -40,6 +40,10 @@ export default function MockTestPage() {
   const [showReportModal, setShowReportModal] = useState(false);
 
   const handleBookmarkClick = (questionId: number) => {
+    if (permissionsLoading) {
+      return; // Don't check permissions while loading
+    }
+    
     if (!canBookmark) {
       alert(getUpgradeMessage('bookmark'));
       router.push('/pricing');
@@ -112,6 +116,10 @@ export default function MockTestPage() {
   };
 
   const handleFlagClick = (questionId: number) => {
+    if (permissionsLoading) {
+      return; // Don't check permissions while loading
+    }
+    
     if (!canReviewAnswers) {
       alert('Flag Questions are available in PRO, ELITE and PREMIUM plans.');
       return;
@@ -572,20 +580,21 @@ export default function MockTestPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleBookmarkClick(question.id)}
+                    disabled={permissionsLoading || !canBookmark}
                   >
                     <Bookmark className={`mr-1 h-4 w-4 ${bookmarks.includes(question.id) ? 'fill-current text-yellow-600' : ''}`} />
                     {bookmarks.includes(question.id) ? 'Bookmarked' : 'Bookmark'}
-                    {!canBookmark && <Lock className="ml-1 h-3 w-3" />}
+                    {!permissionsLoading && !canBookmark && <Lock className="ml-1 h-3 w-3" />}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleFlagClick(question.id)}
-                    disabled={!canReviewAnswers}
+                    disabled={permissionsLoading || !canReviewAnswers}
                   >
                     <Flag className={`mr-1 h-4 w-4 ${reviewFlags.includes(question.id) ? 'fill-current text-red-600' : ''}`} />
                     {reviewFlags.includes(question.id) ? 'Flagged' : 'Flag for Review'}
-                    {!canReviewAnswers && <Lock className="ml-1 h-3 w-3" />}
+                    {!permissionsLoading && !canReviewAnswers && <Lock className="ml-1 h-3 w-3" />}
                   </Button>
                   {reviewFlags.length > 0 && (
                     <Button

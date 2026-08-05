@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
             Performance Analytics
           </h1>
           <p className="mt-3 text-lg text-slate-600">
-            Detailed insights into your preparation journey
+            Detailed insights into your Qbankaration journey
           </p>
         </div>
       </section>
