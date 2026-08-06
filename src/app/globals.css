@@ -310,10 +310,10 @@ button:focus {
   }
 }
 
-.header{
+.landing-header{
   transition: .3s;
 }
-.header:before{
+.landing-header:before{
   content: "";
   position: absolute;
   left: 0;
@@ -327,7 +327,7 @@ button:focus {
 
 }
 
-.scrolled .header:before{
+.scrolled .landing-header:before{
   height: 100%;
 }
 

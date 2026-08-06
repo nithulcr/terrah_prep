@@ -37,7 +37,7 @@ export const Header: React.FC = () => {
   ];
 
   return (
-    <header className="fixed w-full shadow-sm header py-3 top-0 z-50 ">
+    <header className="fixed landing-header w-full  py-3 top-0 z-50 ">
       <div className="max-w-[1400px] mx-auto  z-9 relative">
         <div className="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
           {/* Logo */}

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Profile } from '@/types';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,7 +20,9 @@ import {
   X,
   Shield,
   FolderTree,
-  Upload
+  Upload,
+  ChevronDown,
+  Bell
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -29,6 +32,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
@@ -72,7 +76,7 @@ export default function AdminLayout({
     { href: '/admin/import', label: 'Import', icon: Upload },
     { href: '/admin/test-sets', label: 'Test Sets', icon: Upload },
     { href: '/admin/question-reports', label: 'Question Reports', icon: Shield },
-
+    { href: '/admin/notifications', label: 'Notifications', icon: Bell },
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/batches', label: 'Batches', icon: ClipboardList },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
@@ -178,8 +182,44 @@ export default function AdminLayout({
               <span className="text-sm text-gray-600">
                 {profile?.full_name || 'Admin'}
               </span>
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                {profile?.full_name?.charAt(0).toUpperCase() || 'A'}
+              <NotificationBell />
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  {profile?.full_name?.charAt(0).toUpperCase() || 'A'}
+                </button>
+                
+                {dropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-20">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        <LayoutDashboard className="h-4 w-4 mr-3" />
+                        Dashboard
+                      </Link>
+                      <div className="border-t border-gray-200 my-1" />
+                      <button
+                        onClick={() => {
+                          setDropdownOpen(false);
+                          handleSignOut();
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      >
+                        <LogOut className="h-4 w-4 mr-3" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

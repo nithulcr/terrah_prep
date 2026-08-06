@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { QuestionReport } from '@/types';
+import { notificationService } from './notification.service';
 
 export const questionReportsService = {
   /**
@@ -102,6 +103,35 @@ export const questionReportsService = {
         };
       }
 
+      // Send notification to all admins
+      try {
+        // Get all admin users
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin');
+
+        if (admins && admins.length > 0) {
+          const adminIds = admins.map(admin => admin.id);
+          
+          // Create notifications for all admins
+          await notificationService.createBulkNotifications(supabase, adminIds, {
+            title: 'New Question Report',
+            message: `User reported Question #${questionId}\n\nReason: ${reason}${comment ? `\n\nComment: ${comment}` : ''}`,
+            type: 'report',
+            action_url: `/admin/question-reports/${newReport.id}`,
+            data: {
+              report_id: newReport.id,
+              question_id: questionId,
+              user_id: userId,
+            },
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error sending notification to admins:', notificationError);
+        // Don't fail the report submission if notification fails
+      }
+
       return { 
         success: true, 
         message: 'Report submitted successfully! Thank you for helping us improve.',
@@ -130,6 +160,9 @@ export const questionReportsService = {
     }
   ): Promise<{ success: boolean; reports?: QuestionReport[]; error?: string; debug?: any; total?: number }> {
     try {
+      console.log('getAllReports: Loading ALL reports for admin - NO user filtering');
+      console.log('getAllReports: Filters:', filters);
+      
       let query = supabase
         .from('question_reports')
         .select(`
@@ -142,7 +175,7 @@ export const questionReportsService = {
             option_d,
             correct_option,
             explanation,
-            category:categories(name)
+            category:categories(id, name)
           ),
           user:profiles!question_reports_user_id_fkey(email, full_name),
           reviewer:profiles!question_reports_reviewed_by_fkey(email, full_name)
@@ -150,10 +183,12 @@ export const questionReportsService = {
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
+        console.log('getAllReports: Filtering by status:', filters.status);
         query = query.eq('status', filters.status);
       }
 
       if (filters?.search) {
+        console.log('getAllReports: Filtering by search:', filters.search);
         query = query.or(`question.question.ilike.%${filters.search}%,user.email.ilike.%${filters.search}%,reason.ilike.%${filters.search}%`);
       }
 
@@ -163,9 +198,21 @@ export const questionReportsService = {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
+      console.log('getAllReports: Pagination:', { page, limit, from, to });
+
       query = query.order('created_at', { ascending: false }).range(from, to);
 
+      console.log('getAllReports: Executing query...');
       const { data, error, count } = await query;
+      
+      console.log('getAllReports: Query result:', {
+        hasData: !!data,
+        dataLength: data?.length || 0,
+        count: count || 0,
+        error: error?.message,
+        ids: data?.map(r => r.id),
+        userIds: data?.map(r => r.user_id)
+      });
 
       if (error) {
         console.error('Error fetching reports:', {
@@ -193,6 +240,12 @@ export const questionReportsService = {
         reviewer: report.reviewer || null,
       }));
 
+      console.log('getAllReports: Final result:', {
+        totalReports: reports.length,
+        ids: reports.map(r => r.id),
+        users: reports.map(r => r.user_id)
+      });
+
       return { 
         success: true, 
         reports,
@@ -216,11 +269,24 @@ export const questionReportsService = {
     reportId: number
   ): Promise<{ success: boolean; report?: QuestionReport; error?: string; debug?: any }> {
     try {
+      // Validate reportId
+      if (!Number.isFinite(reportId) || reportId <= 0) {
+        console.error('getReportById: Invalid reportId:', reportId);
+        return { 
+          success: false, 
+          error: 'Invalid report ID',
+          debug: { reportId }
+        };
+      }
+
+      console.log('getReportById: Fetching report:', reportId);
+      
       const { data, error } = await supabase
         .from('question_reports')
         .select(`
           *,
           question:questions(
+            id,
             question, 
             option_a,
             option_b,
@@ -228,10 +294,10 @@ export const questionReportsService = {
             option_d,
             correct_option,
             explanation,
-            category:categories(name)
+            category:categories(id, name)
           ),
-          user:profiles!question_reports_user_id_fkey(email, full_name),
-          reviewer:profiles!question_reports_reviewed_by_fkey(email, full_name)
+          user:profiles!question_reports_user_id_fkey(id, email, full_name),
+          reviewer:profiles!question_reports_reviewed_by_fkey(id, email, full_name)
         `)
         .eq('id', reportId)
         .single();
@@ -283,6 +349,26 @@ export const questionReportsService = {
     adminId: string
   ): Promise<{ success: boolean; error?: string; debug?: any }> {
     try {
+      // Validate all inputs
+      console.log('approveReport: Validating inputs:', { reportId, rewardPoints, adminId });
+      
+      if (!Number.isFinite(reportId) || reportId <= 0) {
+        console.error('approveReport: Invalid reportId:', reportId);
+        return { success: false, error: 'Invalid report ID', debug: { reportId } };
+      }
+
+      if (!Number.isFinite(rewardPoints) || rewardPoints < 1) {
+        console.error('approveReport: Invalid rewardPoints:', rewardPoints);
+        return { success: false, error: 'Invalid reward points', debug: { rewardPoints } };
+      }
+
+      if (!adminId || typeof adminId !== 'string') {
+        console.error('approveReport: Invalid adminId:', adminId);
+        return { success: false, error: 'Invalid admin ID', debug: { adminId } };
+      }
+
+      console.log('approveReport: Step 1 - Getting report details for reportId:', reportId);
+      
       // Get report details
       const { data: report, error: reportError } = await supabase
         .from('question_reports')
@@ -291,6 +377,7 @@ export const questionReportsService = {
         .single();
 
       if (reportError || !report) {
+        console.error('approveReport: Report not found:', reportError);
         return { 
           success: false, 
           error: 'Report not found',
@@ -298,6 +385,12 @@ export const questionReportsService = {
         };
       }
 
+      console.log('approveReport: Step 2 - Updating report status to approved');
+      console.log('approveReport: Report data:', { 
+        userId: report.user_id, 
+        questionId: report.question_id 
+      });
+      
       // Update report status
       const { error: updateError } = await supabase
         .from('question_reports')
@@ -310,7 +403,7 @@ export const questionReportsService = {
         .eq('id', reportId);
 
       if (updateError) {
-        console.error('Error approving report:', {
+        console.error('approveReport: Error updating report:', {
           code: updateError.code,
           message: updateError.message,
           details: updateError.details,
@@ -327,40 +420,125 @@ export const questionReportsService = {
         };
       }
 
-      // Add points to user using the database function
-      const { error: pointsError } = await supabase.rpc('add_points_to_user', {
-        p_user_id: report.user_id,
-        p_points: rewardPoints,
-        p_transaction_type: 'report_reward',
-        p_description: `Reward for approved question report #${reportId}`,
-        p_reference_id: reportId,
-        p_reference_type: 'question_report',
-      });
-
-      if (pointsError) {
-        console.error('Error adding points:', {
-          code: pointsError.code,
-          message: pointsError.message,
-          details: pointsError.details,
-          hint: pointsError.hint,
-        });
-        
+      console.log('approveReport: Step 3 - Adding points to user:', report.user_id, 'points:', rewardPoints);
+      
+      // Validate user_id before awarding points
+      if (!report.user_id || typeof report.user_id !== 'string') {
+        console.error('approveReport: Invalid user_id:', report.user_id);
         return { 
           success: false, 
-          error: pointsError.message || 'Failed to add points',
-          debug: {
-            code: pointsError.code,
-            details: pointsError.details,
-          }
+          error: 'Invalid user ID for points award',
+          debug: { userId: report.user_id, reportId }
+        };
+      }
+      
+      // Get current user points
+      const { data: userPoints, error: pointsFetchError } = await supabase
+        .from('user_points')
+        .select('*')
+        .eq('user_id', report.user_id)
+        .maybeSingle();
+
+      if (pointsFetchError) {
+        console.error('approveReport: Error fetching user points:', pointsFetchError);
+        return { 
+          success: false, 
+          error: 'Failed to fetch user points',
+          debug: { pointsFetchError: pointsFetchError.message }
         };
       }
 
+      // If user_points record doesn't exist, create one
+      if (!userPoints) {
+        console.log('approveReport: Creating user_points record for:', report.user_id);
+        const { data: newUserPoints, error: createError } = await supabase
+          .from('user_points')
+          .insert({
+            user_id: report.user_id,
+            total_points: rewardPoints,
+            available_points: rewardPoints,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('approveReport: Error creating user points:', createError);
+          return { 
+            success: false, 
+            error: 'Failed to create user points record',
+            debug: { createError: createError.message }
+          };
+        }
+      } else {
+        // Update existing user points
+        console.log('approveReport: Updating user_points for:', report.user_id);
+        const { error: updateError } = await supabase
+          .from('user_points')
+          .update({
+            total_points: (userPoints.total_points || 0) + rewardPoints,
+            available_points: (userPoints.available_points || 0) + rewardPoints,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', report.user_id);
+
+        if (updateError) {
+          console.error('approveReport: Error updating user points:', updateError);
+          return { 
+            success: false, 
+            error: 'Failed to update user points',
+            debug: { updateError: updateError.message }
+          };
+        }
+      }
+
+      // Create point transaction (non-blocking - log error but don't fail)
+      console.log('approveReport: Step 4 - Creating point transaction');
+      const { error: transactionError } = await supabase
+        .from('point_transactions')
+        .insert({
+          user_id: report.user_id,
+          transaction_type: 'question_report_reward',
+          points: rewardPoints,
+          description: `Question report #${reportId} approved`,
+          reference_id: reportId,
+          reference_type: 'question_report',
+        });
+
+      if (transactionError) {
+        console.error('approveReport: Error creating transaction (non-blocking):', transactionError);
+        // Don't fail the approval if transaction creation fails
+        // Points were already awarded successfully
+      } else {
+        console.log('approveReport: Point transaction created successfully');
+      }
+
+      console.log('approveReport: Step 4 - Points added successfully');
+      
+      // Send notification to user
+      try {
+        await notificationService.createNotification(supabase, {
+          user_id: report.user_id,
+          title: 'Report Approved',
+          message: `Your question report has been approved.\n\nYou received ${rewardPoints} points.\n\nThank you for helping improve Terrah PSC.`,
+          type: 'reward',
+          action_url: '/user/reports',
+          data: {
+            report_id: reportId,
+            points: rewardPoints,
+          },
+        });
+      } catch (notificationError) {
+        console.error('Error sending approval notification:', notificationError);
+        // Don't fail the approval if notification fails
+      }
+      
       return { 
         success: true,
         debug: { 
           reportId, 
           userId: report.user_id, 
-          points: rewardPoints 
+          points: rewardPoints,
+          questionId: report.question_id
         }
       };
     } catch (error: any) {
@@ -382,17 +560,33 @@ export const questionReportsService = {
     adminId: string
   ): Promise<{ success: boolean; error?: string; debug?: any }> {
     try {
+      // Validate inputs
+      console.log('rejectReport: Validating inputs:', { reportId, adminId });
+      
+      if (!Number.isFinite(reportId) || reportId <= 0) {
+        console.error('rejectReport: Invalid reportId:', reportId);
+        return { success: false, error: 'Invalid report ID', debug: { reportId } };
+      }
+
+      if (!adminId || typeof adminId !== 'string') {
+        console.error('rejectReport: Invalid adminId:', adminId);
+        return { success: false, error: 'Invalid admin ID', debug: { adminId } };
+      }
+
+      console.log('rejectReport: Updating report status to rejected for reportId:', reportId);
+      
       const { error } = await supabase
         .from('question_reports')
         .update({
           status: 'rejected',
           reviewed_by: adminId,
           reviewed_at: new Date().toISOString(),
+          reward_points: 0,
         })
         .eq('id', reportId);
 
       if (error) {
-        console.error('Error rejecting report:', {
+        console.error('rejectReport: Error updating report:', {
           code: error.code,
           message: error.message,
           details: error.details,
@@ -409,7 +603,37 @@ export const questionReportsService = {
         };
       }
 
-      return { success: true };
+      console.log('rejectReport: Report rejected successfully');
+      
+      // Get report details for notification
+      const { data: reportData } = await supabase
+        .from('question_reports')
+        .select('user_id, admin_comment')
+        .eq('id', reportId)
+        .single();
+
+      // Send notification to user
+      if (reportData) {
+        try {
+          await notificationService.createNotification(supabase, {
+            user_id: reportData.user_id,
+            title: 'Report Rejected',
+            message: `Your question report has been reviewed.\n\nReason:\n${adminId ? 'Admin reviewed your report' : 'Report did not meet approval criteria'}`,
+            type: 'report',
+            data: {
+              report_id: reportId,
+            },
+          });
+        } catch (notificationError) {
+          console.error('Error sending rejection notification:', notificationError);
+          // Don't fail the rejection if notification fails
+        }
+      }
+      
+      return { 
+        success: true,
+        debug: { reportId }
+      };
     } catch (error: any) {
       console.error('Error in rejectReport:', error);
       return { 

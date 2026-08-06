@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { config } from '@/lib/config';
 import { authenticateAdmin } from '@/lib/supabase/server';
 import { questionReportsService } from '@/lib/services/question-reports.service';
 
@@ -6,7 +8,7 @@ export async function GET(request: Request) {
   try {
     console.log('=== Admin API: GET /api/admin/question-reports ===');
     
-    // Use unified authentication helper
+    // First authenticate using anon client
     const auth = await authenticateAdmin(request);
     
     if (auth.error) {
@@ -23,7 +25,16 @@ export async function GET(request: Request) {
       }, { status: auth.error === 'Unauthorized' ? 401 : 403 });
     }
 
-    const supabase = auth.supabase;
+    // Create admin client with SERVICE_ROLE_KEY to bypass RLS
+    const adminSupabase = createClient(
+      config.supabase.url,
+      config.supabase.serviceRoleKey,
+      {
+        auth: { autoRefreshToken: false, persistSession: false },
+      }
+    );
+
+    console.log('Admin API: Using SERVICE_ROLE_KEY - bypassing RLS');
 
     // Get query parameters
     const url = new URL(request.url);
@@ -33,8 +44,9 @@ export async function GET(request: Request) {
     const limit = parseInt(url.searchParams.get('limit') || '20');
 
     console.log('Admin API: Query params:', { status, search, page, limit });
+    console.log('Admin API: Calling getAllReports - expecting ALL reports from database');
 
-    const result = await questionReportsService.getAllReports(supabase, {
+    const result = await questionReportsService.getAllReports(adminSupabase, {
       status,
       search,
       page,
@@ -45,8 +57,14 @@ export async function GET(request: Request) {
       success: result.success, 
       reportsCount: result.reports?.length || 0,
       total: result.total,
-      error: result.error 
+      error: result.error,
+      reportIds: result.reports?.map(r => r.id),
+      reportUserIds: result.reports?.map(r => r.user_id)
     });
+    
+    // Additional logging
+    console.log('Reports returned:', result.reports?.length || 0);
+    console.log('Report data:', result.reports);
 
     if (!result.success) {
       console.error('Admin API: Service failed:', result.debug);

@@ -267,6 +267,7 @@ export interface QuestionReport {
     correct_option: 'A' | 'B' | 'C' | 'D';
     explanation?: string | null;
     category: {
+      id: number;
       name: string;
     };
   };

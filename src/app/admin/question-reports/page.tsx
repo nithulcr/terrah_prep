@@ -24,12 +24,39 @@ export default function AdminQuestionReportsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Edited question fields
+  const [editedQuestion, setEditedQuestion] = useState('');
+  const [editedOptionA, setEditedOptionA] = useState('');
+  const [editedOptionB, setEditedOptionB] = useState('');
+  const [editedOptionC, setEditedOptionC] = useState('');
+  const [editedOptionD, setEditedOptionD] = useState('');
+  const [editedCorrectOption, setEditedCorrectOption] = useState<'A' | 'B' | 'C' | 'D'>('A');
+  const [editedExplanation, setEditedExplanation] = useState('');
+  const [editedCategoryId, setEditedCategoryId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<Array<{id: number; name: string}>>([]);
 
   useEffect(() => {
     if (user) {
       loadReports();
+      loadCategories();
     }
   }, [user, filter, searchQuery, page]);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
 
   const loadReports = async () => {
     try {
@@ -45,12 +72,17 @@ export default function AdminQuestionReportsPage() {
 
       console.log('Admin: Loading reports from /api/admin/question-reports');
       
-      // Get session for Authorization header (same as working admin APIs)
+      // Get session for Authorization header
       const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setError('No session found. Please login again.');
+        return;
+      }
       
       const response = await fetch(`/api/admin/question-reports?${params}`, {
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
       });
 
@@ -77,15 +109,42 @@ export default function AdminQuestionReportsPage() {
   };
 
   const handleViewReport = async (report: QuestionReport) => {
+    // Comprehensive logging
+    console.log('REPORT OBJECT', report);
+    console.log('Report ID:', report?.id);
+    console.log('Report ID type:', typeof report?.id);
+    
+    // Validate report.id - MUST be a valid number from question_reports.id
+    if (!report || !report.id) {
+      console.error('Missing report or report.id', { report, reportId: report?.id });
+      alert('Invalid report. Cannot load report details.');
+      return;
+    }
+
+    const reportId = report.id;
+    console.log('Using reportId:', reportId);
+    
+    if (!Number.isFinite(reportId) || reportId <= 0) {
+      console.error('Invalid report id', { reportId, report });
+      alert('Invalid report ID. Cannot load report details.');
+      return;
+    }
+
     try {
-      console.log('Admin: Loading report details for ID:', report.id);
+      const fetchUrl = `/api/admin/question-reports/${reportId}`;
+      console.log('Fetching:', fetchUrl);
       
-      // Get session for Authorization header (same as working admin APIs)
+      // Get session for Authorization header
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch(`/api/admin/question-reports/${report.id}`, {
+      if (!session?.access_token) {
+        alert('No session found. Please login again.');
+        return;
+      }
+      
+      const response = await fetch(fetchUrl, {
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
       });
 
@@ -99,6 +158,19 @@ export default function AdminQuestionReportsPage() {
       }
 
       setSelectedReport(data.report);
+      
+      // Initialize edited fields with current values
+      if (data.report.question) {
+        setEditedQuestion(data.report.question.question || '');
+        setEditedOptionA(data.report.question.option_a || '');
+        setEditedOptionB(data.report.question.option_b || '');
+        setEditedOptionC(data.report.question.option_c || '');
+        setEditedOptionD(data.report.question.option_d || '');
+        setEditedCorrectOption(data.report.question.correct_option || 'A');
+        setEditedExplanation(data.report.question.explanation || '');
+        setEditedCategoryId(data.report.question.category?.id || null);
+      }
+      
       setShowModal(true);
       setAction(null);
       console.log('Admin: Report details loaded');
@@ -108,43 +180,137 @@ export default function AdminQuestionReportsPage() {
     }
   };
 
+  const handleDelete = async (report: QuestionReport) => {
+    if (!report.id || isNaN(report.id)) {
+      alert('Invalid report ID. Cannot delete.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete Report #${report.id}?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setSubmitting(true);
+    try {
+      console.log('Admin: Deleting report:', report.id);
+      
+      // Get session for Authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('No session found. Please login again.');
+        return;
+      }
+      
+      const response = await fetch(`/api/admin/question-reports/${report.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+      console.log('Admin: Delete response:', { success: data.success, error: data.error });
+
+      if (!data.success) {
+        alert(data.error || 'Failed to delete report');
+        console.error('Delete failed:', data.debug);
+        return;
+      }
+
+      alert('Report deleted successfully');
+      await loadReports();
+      console.log('Admin: Report deleted successfully');
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete report');
+      console.error('Error deleting report:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleAction = async () => {
     if (!selectedReport || !action) return;
+
+    // Validate report ID
+    if (!selectedReport.id || isNaN(selectedReport.id)) {
+      alert('Invalid report ID. Cannot process action.');
+      return;
+    }
 
     setSubmitting(true);
     try {
       console.log('Admin: Submitting action:', action, 'for report:', selectedReport.id);
       
-      // Get session for Authorization header (same as working admin APIs)
+      // Get session for Authorization header
       const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('No session found. Please login again.');
+        return;
+      }
+      
+      const requestBody: any = {
+        action,
+        rewardPoints: action === 'approve' ? rewardPoints : undefined,
+      };
+
+      // If approving and question was edited, include the updated question data
+      if (action === 'approve' && selectedReport.question) {
+        const hasEdits = 
+          editedQuestion !== selectedReport.question.question ||
+          editedOptionA !== selectedReport.question.option_a ||
+          editedOptionB !== selectedReport.question.option_b ||
+          editedOptionC !== selectedReport.question.option_c ||
+          editedOptionD !== selectedReport.question.option_d ||
+          editedCorrectOption !== selectedReport.question.correct_option ||
+          editedExplanation !== selectedReport.question.explanation ||
+          editedCategoryId !== selectedReport.question.category?.id;
+
+        if (hasEdits) {
+          requestBody.updatedQuestion = {
+            id: selectedReport.question_id,
+            question: editedQuestion,
+            option_a: editedOptionA,
+            option_b: editedOptionB,
+            option_c: editedOptionC,
+            option_d: editedOptionD,
+            correct_option: editedCorrectOption,
+            explanation: editedExplanation,
+            category_id: editedCategoryId,
+          };
+        }
+      }
       
       const response = await fetch(`/api/admin/question-reports/${selectedReport.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action,
-          rewardPoints: action === 'approve' ? rewardPoints : undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
       console.log('Admin: Action response:', { success: data.success, error: data.error, message: data.message });
 
       if (!data.success) {
-        alert(data.error || 'Failed to process action');
+        setError(data.error || 'Failed to process action');
         console.error('Action failed:', data.debug);
         return;
       }
 
-      alert(data.message);
+      setSuccessMessage(data.message);
       setShowModal(false);
       await loadReports();
       console.log('Admin: Action completed successfully');
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      alert(err.message || 'Failed to process action');
+      setError(err.message || 'Failed to process action');
       console.error('Error handling action:', err);
     } finally {
       setSubmitting(false);
@@ -247,6 +413,20 @@ export default function AdminQuestionReportsPage() {
           <div className="mb-6 rounded-lg bg-red-50 p-4 text-red-800">
             <p className="font-semibold">Error:</p>
             <p>{error}</p>
+            <button 
+              onClick={() => setError(null)}
+              className="mt-2 text-sm underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Success Message Display */}
+        {successMessage && (
+          <div className="mb-6 rounded-lg bg-green-50 p-4 text-green-800">
+            <p className="font-semibold">Success:</p>
+            <p>{successMessage}</p>
           </div>
         )}
 
@@ -334,6 +514,16 @@ export default function AdminQuestionReportsPage() {
                           <Eye className="mr-1 h-4 w-4" />
                           View
                         </Button>
+                        {report.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleDelete(report)}
+                            disabled={submitting}
+                          >
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardBody>
@@ -369,7 +559,7 @@ export default function AdminQuestionReportsPage() {
         {/* Report Detail Modal */}
         {showModal && selectedReport && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6">
+            <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-900">Report #{selectedReport.id}</h2>
                 <button
@@ -381,42 +571,97 @@ export default function AdminQuestionReportsPage() {
               </div>
 
               <div className="space-y-4">
+                {/* Question Editor */}
                 <div>
                   <h3 className="font-semibold text-slate-700 mb-2">Question</h3>
-                  <div className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-slate-900">{selectedReport.question?.question}</p>
-                    {selectedReport.question && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm text-slate-600">
-                          <strong>A.</strong> {selectedReport.question.option_a}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          <strong>B.</strong> {selectedReport.question.option_b}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          <strong>C.</strong> {selectedReport.question.option_c}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          <strong>D.</strong> {selectedReport.question.option_d}
-                        </p>
+                  <div className="rounded-lg bg-slate-50 p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-1">Question Text</p>
+                      <Textarea
+                        value={editedQuestion}
+                        onChange={(e) => setEditedQuestion(e.target.value)}
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Option A</p>
+                        <Input
+                          value={editedOptionA}
+                          onChange={(e) => setEditedOptionA(e.target.value)}
+                          className="mt-1"
+                        />
                       </div>
-                    )}
-                    {selectedReport.question?.correct_option && (
-                      <p className="mt-2 text-sm font-semibold text-green-600">
-                        Correct Option: {selectedReport.question.correct_option}
-                      </p>
-                    )}
-                    {selectedReport.question?.explanation && (
-                      <p className="mt-2 text-sm text-slate-600">
-                        <span className="font-semibold">Explanation:</span> {selectedReport.question.explanation}
-                      </p>
-                    )}
-                    <p className="text-sm text-slate-500 mt-1">
-                      Category: {selectedReport.question?.category?.name}
-                    </p>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Option B</p>
+                        <Input
+                          value={editedOptionB}
+                          onChange={(e) => setEditedOptionB(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Option C</p>
+                        <Input
+                          value={editedOptionC}
+                          onChange={(e) => setEditedOptionC(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Option D</p>
+                        <Input
+                          value={editedOptionD}
+                          onChange={(e) => setEditedOptionD(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Correct Option</p>
+                        <select
+                          value={editedCorrectOption}
+                          onChange={(e) => setEditedCorrectOption(e.target.value as 'A' | 'B' | 'C' | 'D')}
+                          className="mt-1 w-full rounded border border-slate-300 p-2"
+                        >
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="C">C</option>
+                          <option value="D">D</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Category</p>
+                        <select
+                          value={editedCategoryId || ''}
+                          onChange={(e) => setEditedCategoryId(Number(e.target.value) || null)}
+                          className="mt-1 w-full rounded border border-slate-300 p-2"
+                        >
+                          <option value="">Select category</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-1">Explanation</p>
+                      <Textarea
+                        value={editedExplanation}
+                        onChange={(e) => setEditedExplanation(e.target.value)}
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
                 </div>
 
+                {/* Report Details */}
                 <div>
                   <h3 className="font-semibold text-slate-700 mb-2">Report Details</h3>
                   <div className="rounded-lg bg-slate-50 p-4 space-y-2">
@@ -455,9 +700,11 @@ export default function AdminQuestionReportsPage() {
                   </div>
                 </div>
 
+                {/* Reward Points Input */}
                 {selectedReport.status === 'pending' && (
                   <div>
                     <h3 className="font-semibold text-slate-700 mb-2">Reward Points</h3>
+                    <p className="text-sm text-slate-600 mb-2">Points to award to the reporter</p>
                     <Input
                       type="number"
                       min="1"
@@ -468,6 +715,7 @@ export default function AdminQuestionReportsPage() {
                   </div>
                 )}
 
+                {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
                   {selectedReport.status === 'pending' && (
                     <>
@@ -500,6 +748,7 @@ export default function AdminQuestionReportsPage() {
                   </Button>
                 </div>
 
+                {/* Confirmation */}
                 {action && (
                   <div className="rounded-lg bg-blue-50 p-4">
                     <p className="text-sm text-blue-800">

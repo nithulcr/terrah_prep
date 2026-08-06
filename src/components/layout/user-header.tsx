@@ -5,15 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth/use-auth';
-import { 
-  BookOpen, 
-  User, 
+import { usePlanPermissions } from '@/lib/hooks/use-plan-permissions';
+import { NotificationBell } from '@/components/notifications/notification-bell';
+import {
+  BookOpen,
+  User,
   LogOut,
   Menu,
   X,
   Bookmark,
   Flag,
-  ChevronDown
+  ChevronDown,
+  BarChart3,
+  Shield,
+  Bell
 } from 'lucide-react';
 
 export const UserHeader: React.FC = () => {
@@ -21,6 +26,23 @@ export const UserHeader: React.FC = () => {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = React.useState(false);
   const pathname = usePathname();
   const { user, signOut, profile, loading } = useAuth();
+  const { canResultHistory, loading: permissionsLoading } = usePlanPermissions();
+
+  // Check if user is admin
+  const isAdmin = profile?.role === 'admin';
+
+  // Debug logging
+  console.log('UserHeader Debug:', {
+    profileRole: profile?.role,
+    planSlug: profile?.plan_slug,
+    hasPlan: !!(profile as any)?.plan,
+    planAllowResultHistory: (profile as any)?.plan?.allow_result_history,
+    canResultHistory,
+    permissionsLoading,
+    showResultsLink: !permissionsLoading && canResultHistory,
+    isAdmin,
+    showAdminLink: isAdmin,
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -51,6 +73,12 @@ export const UserHeader: React.FC = () => {
     { href: '/pricing', label: 'Pricing' },
   ];
 
+  // Show results link only if user has result history permission
+  const showResultsLink = !permissionsLoading && canResultHistory;
+
+  // Show admin link if user is admin
+  const showAdminLink = isAdmin;
+
   return (
     <header className="fixed w-full bg-white shadow-sm border-b border-slate-200 py-3 top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,19 +94,24 @@ export const UserHeader: React.FC = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className={` font-medium transition-colors ${
-                  isActive(link.href)
+                className={` font-medium transition-colors ${isActive(link.href)
                     ? 'text-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
-                }`}
+                  }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
 
+
+
           {/* User Dropdown - Desktop */}
-          <div className="hidden lg:block relative ml-auto">
+          <div className="hidden lg:flex  gap-3 relative ml-auto">
+            {/* Notifications Bell */}
+            <div className="hidden lg:flex items-center">
+              <NotificationBell />
+            </div>
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
               className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -102,9 +135,9 @@ export const UserHeader: React.FC = () => {
                   className="fixed inset-0 z-10"
                   onClick={() => setIsUserDropdownOpen(false)}
                 />
-                
+
                 {/* Dropdown */}
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg border border-slate-200 z-20">
+                <div className="absolute right-0 mt-12 w-56 rounded-lg bg-white shadow-lg border border-slate-200 z-20">
                   {/* User Info */}
                   <div className="p-4 border-b border-slate-200">
                     <div className="flex items-center space-x-3">
@@ -132,7 +165,38 @@ export const UserHeader: React.FC = () => {
                       <User className="h-4 w-4 mr-3 text-slate-500" />
                       Profile
                     </Link>
-                    
+
+                    <Link
+                      href="/notifications"
+                      className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <Bell className="h-4 w-4 mr-3 text-slate-500" />
+                      Notifications
+                    </Link>
+
+                    {showResultsLink && (
+                      <Link
+                        href="/dashboard/results"
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-3 text-slate-500" />
+                        Results
+                      </Link>
+                    )}
+
+                    {showAdminLink && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <Shield className="h-4 w-4 mr-3 text-slate-500" />
+                        Admin Panel
+                      </Link>
+                    )}
+
                     <div className="border-t border-slate-200 my-1" />
                     <button
                       onClick={() => {
@@ -171,16 +235,53 @@ export const UserHeader: React.FC = () => {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                    isActive(link.href)
+                  className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive(link.href)
                       ? 'bg-blue-50 text-blue-600'
                       : 'text-gray-700 hover:bg-gray-50'
-                  }`}
+                    }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
+
+              <Link
+                href="/notifications"
+                className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive('/notifications')
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Notifications
+              </Link>
+
+              {showResultsLink && (
+                <Link
+                  href="/dashboard/results"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive('/dashboard/results')
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Results
+                </Link>
+              )}
+
+              {showAdminLink && (
+                <Link
+                  href="/admin"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive('/admin')
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Admin Panel
+                </Link>
+              )}
+
               <div className="pt-3 border-t border-gray-200 space-y-2">
                 <div className="px-3 py-2 text-sm text-slate-600">
                   {user?.email}
